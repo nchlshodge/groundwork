@@ -160,11 +160,25 @@ Ending with this petition keeps prayer honest. Life is hard. Not everything is a
       { id: "custom",  label: "Custom",        desc: "Your own parameters" },
     ];
 
-    const INITIAL_REQUESTS = [
-      { id: 1, name: "Marcus", request: "Job interview on Thursday", date: "Jun 20", answered: false },
-      { id: 2, name: "Mom",    request: "Knee surgery recovery",     date: "Jun 15", answered: false },
-      { id: 3, name: "Deon",   request: "Marriage counseling",       date: "Jun 10", answered: true  },
+    const SECTIONS = [
+      { id: "praise",       label: "Praise",        prompt: "I thank you God for...",                color: "#4A9E7F", hint: "What has God done that you're grateful for?" },
+      { id: "worship",      label: "Worship",       prompt: "God, let me remind myself who You are...", color: "#6B5FD6", hint: "Name who God is — His character, His nature." },
+      { id: "petition",     label: "Petition",      prompt: "God, I am asking for this for myself...", color: "#5B8DD9", hint: "Your personal needs — nothing too small." },
+      { id: "intercession", label: "Intercession",  prompt: "God, I pray for other people...",        color: "#B87333", hint: "Who needs you to stand in the gap for them?" },
+      { id: "confession",   label: "Confession",    prompt: "God, here is where I messed up...",      color: "#9E6B8A", hint: "Be specific. Specificity is the practice." },
     ];
+
+    const INITIAL_ENTRIES = {
+      praise:       [{ id: 1, text: "My family's health", date: "Jun 20", done: false }],
+      worship:      [{ id: 2, text: "You are faithful and unchanging", date: "Jun 18", done: false }],
+      petition:     [{ id: 3, text: "Clarity on next steps at work", date: "Jun 20", done: false }],
+      intercession: [
+        { id: 4, name: "Marcus", text: "Job interview on Thursday", date: "Jun 20", done: false },
+        { id: 5, name: "Mom",    text: "Knee surgery recovery",     date: "Jun 15", done: false },
+        { id: 6, name: "Deon",   text: "Marriage counseling",       date: "Jun 10", done: true  },
+      ],
+      confession:   [{ id: 7, text: "Was short with my family this morning", date: "Jun 19", done: false }],
+    };
 
     // ── Practice Timer ────────────────────────────────────────────────────────
     function PracticeTimer({ practiceText }) {
@@ -296,15 +310,18 @@ Ending with this petition keeps prayer honest. Life is hard. Not everything is a
     // ── Main App ──────────────────────────────────────────────────────────────
     function App() {
       const [tab, setTab]                   = useState("learn");
+      const [showSettings, setShowSettings] = useState(false);
+      const [schedule, setSchedule]         = useState({ freq: null, times: ["07:00"], customDays: [], duration: 30 });
       const [selected, setSelected]         = useState(null);
       const [segments, setSegments]         = useState(SEGMENTS);
       const [fastType, setFastType]         = useState(null);
       const [fastActive, setFastActive]     = useState(false);
       const [fastStart, setFastStart]       = useState(null);
       const [fastNotes, setFastNotes]       = useState("");
-      const [requests, setRequests]         = useState(INITIAL_REQUESTS);
-      const [newReq, setNewReq]             = useState({ name: "", request: "" });
+      const [entries, setEntries]           = useState(INITIAL_ENTRIES);
+      const [activeSection, setActiveSection] = useState(null);
       const [showAdd, setShowAdd]           = useState(false);
+      const [newEntry, setNewEntry]         = useState({ name: "", text: "" });
 
       const completed = segments.filter(s => s.complete).length;
 
@@ -313,14 +330,22 @@ Ending with this petition keeps prayer honest. Life is hard. Not everything is a
         setSelected(null);
       };
 
-      const addRequest = () => {
-        if (!newReq.name || !newReq.request) return;
-        setRequests([...requests, { id: Date.now(), name: newReq.name, request: newReq.request, date: "Today", answered: false }]);
-        setNewReq({ name: "", request: "" });
+      const addEntry = (sectionId) => {
+        if (!newEntry.text) return;
+        const sec = SECTIONS.find(s => s.id === sectionId);
+        const entry = { id: Date.now(), text: newEntry.text, date: "Today", done: false };
+        if (sectionId === "intercession") entry.name = newEntry.name || "Someone";
+        setEntries({ ...entries, [sectionId]: [...entries[sectionId], entry] });
+        setNewEntry({ name: "", text: "" });
         setShowAdd(false);
       };
 
-      const toggleAnswered = (id) => setRequests(requests.map(r => r.id === id ? { ...r, answered: !r.answered } : r));
+      const toggleDone = (sectionId, id) => {
+        setEntries({
+          ...entries,
+          [sectionId]: entries[sectionId].map(e => e.id === id ? { ...e, done: !e.done } : e)
+        });
+      };
 
       // ── Styles ──
       const navBtn = (active) => ({
@@ -427,51 +452,95 @@ Ending with this petition keeps prayer honest. Life is hard. Not everything is a
       };
 
       // ── Board Tab ──
-      const renderBoard = () => (
-        <div style={{ padding: "24px", paddingBottom: 80 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 16 }}>Prayer Board</div>
-
-          {showAdd ? (
-            <div style={{ background: C.white, borderRadius: 16, padding: 24, marginBottom: 16 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, color: C.ink }}>Add a request</div>
-              <input style={inputStyle} placeholder="Name" value={newReq.name} onChange={e => setNewReq({ ...newReq, name: e.target.value })} />
-              <input style={inputStyle} placeholder="What are you praying for?" value={newReq.request} onChange={e => setNewReq({ ...newReq, request: e.target.value })} />
-              <button onClick={addRequest} style={btn("primary")}>Add to board</button>
-              <button onClick={() => setShowAdd(false)} style={{ ...outlineBtn, marginTop: 10, marginBottom: 0 }}>Cancel</button>
-            </div>
-          ) : (
-            <button onClick={() => setShowAdd(true)} style={outlineBtn}>+ Add request</button>
-          )}
-
-          {requests.filter(r => !r.answered).map(r => (
-            <div key={r.id} style={{ background: C.white, borderRadius: 12, padding: "16px 18px", marginBottom: 10, display: "flex", gap: 14 }}>
-              <div onClick={() => toggleAnswered(r.id)} style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${C.paper}`, flexShrink: 0, marginTop: 2, cursor: "pointer" }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{r.name}</div>
-                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{r.request}</div>
-                <div style={{ fontSize: 11, color: C.stone, marginTop: 6 }}>Added {r.date}</div>
+      const renderBoard = () => {
+        // Section detail view
+        if (activeSection) {
+          const sec = SECTIONS.find(s => s.id === activeSection);
+          const sectionEntries = entries[activeSection];
+          const active = sectionEntries.filter(e => !e.done);
+          const done = sectionEntries.filter(e => e.done);
+          return (
+            <div style={{ padding: "24px", paddingBottom: 80 }}>
+              <button onClick={() => { setActiveSection(null); setShowAdd(false); }} style={{ background: "none", border: "none", fontSize: 13, color: C.accent, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>
+                ← Back
+              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+                <div style={{ width: 10, height: 10, borderRadius: "50%", background: sec.color, flexShrink: 0 }} />
+                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: C.ink }}>{sec.label}</div>
               </div>
-            </div>
-          ))}
+              <div style={{ fontSize: 13, color: C.stone, marginBottom: 24, fontStyle: "italic" }}>"{sec.prompt}"</div>
 
-          {requests.filter(r => r.answered).length > 0 && (
-            <>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", margin: "24px 0 16px" }}>Answered</div>
-              {requests.filter(r => r.answered).map(r => (
-                <div key={r.id} style={{ background: C.white, borderRadius: 12, padding: "16px 18px", marginBottom: 10, display: "flex", gap: 14, opacity: 0.5 }}>
-                  <div onClick={() => toggleAnswered(r.id)} style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${C.sage}`, background: C.sage, flexShrink: 0, marginTop: 2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ color: "white", fontSize: 11, fontWeight: 700 }}>✓</span>
-                  </div>
+              {showAdd ? (
+                <div style={{ background: C.white, borderRadius: 16, padding: 20, marginBottom: 16 }}>
+                  {activeSection === "intercession" && (
+                    <input style={inputStyle} placeholder="Who are you praying for?" value={newEntry.name} onChange={e => setNewEntry({ ...newEntry, name: e.target.value })} />
+                  )}
+                  <textarea style={{ ...inputStyle, height: 80, resize: "none", lineHeight: 1.6 }} placeholder={sec.hint} value={newEntry.text} onChange={e => setNewEntry({ ...newEntry, text: e.target.value })} />
+                  <button onClick={() => addEntry(activeSection)} style={btn("primary")}>Add</button>
+                  <button onClick={() => setShowAdd(false)} style={{ ...outlineBtn, marginTop: 10, marginBottom: 0 }}>Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => setShowAdd(true)} style={{ ...outlineBtn, borderColor: sec.color, color: sec.color }}>+ Add</button>
+              )}
+
+              {active.map(e => (
+                <div key={e.id} style={{ background: C.white, borderRadius: 12, padding: "16px 18px", marginBottom: 10, display: "flex", gap: 14 }}>
+                  <div onClick={() => toggleDone(activeSection, e.id)} style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${C.paper}`, flexShrink: 0, marginTop: 2, cursor: "pointer" }} />
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, textDecoration: "line-through" }}>{r.name}</div>
-                    <div style={{ fontSize: 13, color: C.stone }}>{r.request}</div>
+                    {activeSection === "intercession" && e.name && <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{e.name}</div>}
+                    <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{e.text}</div>
+                    <div style={{ fontSize: 11, color: C.stone, marginTop: 6 }}>Added {e.date}</div>
                   </div>
                 </div>
               ))}
-            </>
-          )}
-        </div>
-      );
+
+              {done.length > 0 && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", margin: "24px 0 16px" }}>
+                    {activeSection === "confession" ? "Confessed" : activeSection === "praise" ? "Recorded" : "Answered"}
+                  </div>
+                  {done.map(e => (
+                    <div key={e.id} style={{ background: C.white, borderRadius: 12, padding: "16px 18px", marginBottom: 10, display: "flex", gap: 14, opacity: 0.5 }}>
+                      <div onClick={() => toggleDone(activeSection, e.id)} style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${sec.color}`, background: sec.color, flexShrink: 0, marginTop: 2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ color: "white", fontSize: 11, fontWeight: 700 }}>✓</span>
+                      </div>
+                      <div>
+                        {activeSection === "intercession" && e.name && <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, textDecoration: "line-through" }}>{e.name}</div>}
+                        <div style={{ fontSize: 13, color: C.stone, textDecoration: "line-through" }}>{e.text}</div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          );
+        }
+
+        // Section overview
+        return (
+          <div style={{ padding: "24px", paddingBottom: 80 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 20 }}>Prayer Board</div>
+            {SECTIONS.map(sec => {
+              const count = entries[sec.id].filter(e => !e.done).length;
+              return (
+                <div key={sec.id} onClick={() => { setActiveSection(sec.id); setShowAdd(false); }}
+                  style={{ background: C.white, borderRadius: 14, padding: "18px 20px", marginBottom: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 14, border: "1px solid transparent", transition: "all 0.15s" }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: sec.color + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: sec.color }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 3 }}>{sec.label}</div>
+                    <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic" }}>{sec.prompt}</div>
+                  </div>
+                  {count > 0 && (
+                    <div style={{ background: sec.color + "22", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 600, color: sec.color }}>{count}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      };
 
       // ── Fast Tab ──
       const renderFast = () => (
@@ -531,14 +600,206 @@ Ending with this petition keeps prayer honest. Life is hard. Not everything is a
         </div>
       );
 
+      // ── Settings / Schedule ──
+      const renderSettings = () => {
+        const freqOptions = [
+          { id: "2x",      label: "Twice a day",   desc: "Morning and evening" },
+          { id: "daily",   label: "Every day",      desc: "Once daily" },
+          { id: "other",   label: "Every other day", desc: "Alternating days" },
+          { id: "custom",  label: "Custom",          desc: "Choose specific days" },
+        ];
+        const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+        const toggleDay = (d) => {
+          const cur = schedule.customDays;
+          setSchedule({ ...schedule, customDays: cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d] });
+        };
+
+        const updateTime = (idx, val) => {
+          const times = [...schedule.times];
+          times[idx] = val;
+          setSchedule({ ...schedule, times });
+        };
+
+        const pad = (n) => String(n).padStart(2, "0");
+
+        const formatICSDate = (dateObj) => {
+          return dateObj.getFullYear() + pad(dateObj.getMonth()+1) + pad(dateObj.getDate()) +
+            "T" + pad(dateObj.getHours()) + pad(dateObj.getMinutes()) + "00";
+        };
+
+        const getRRule = () => {
+          if (schedule.freq === "daily") return "RRULE:FREQ=DAILY";
+          if (schedule.freq === "2x") return "RRULE:FREQ=DAILY";
+          if (schedule.freq === "other") return "RRULE:FREQ=DAILY;INTERVAL=2";
+          if (schedule.freq === "custom" && schedule.customDays.length > 0) {
+            const dayMap = { Sun:"SU", Mon:"MO", Tue:"TU", Wed:"WE", Thu:"TH", Fri:"FR", Sat:"SA" };
+            return "RRULE:FREQ=WEEKLY;BYDAY=" + schedule.customDays.map(d => dayMap[d]).join(",");
+          }
+          return "RRULE:FREQ=DAILY";
+        };
+
+        const generateICS = () => {
+          const timesToUse = schedule.freq === "2x"
+            ? (schedule.times.length >= 2 ? schedule.times : ["07:00","19:00"])
+            : [schedule.times[0] || "07:00"];
+
+          let events = "";
+          timesToUse.forEach((t, i) => {
+            const [h, m] = t.split(":").map(Number);
+            const now = new Date();
+            now.setHours(h, m, 0, 0);
+            const end = new Date(now.getTime() + schedule.duration * 60000);
+            const uid = Date.now() + i + "@groundwork";
+            events += [
+              "BEGIN:VEVENT",
+              "UID:" + uid,
+              "DTSTART:" + formatICSDate(now),
+              "DTEND:" + formatICSDate(end),
+              "SUMMARY:Time with God",
+              "DESCRIPTION:Scheduled prayer time — Groundwork app",
+              "TRANSP:OPAQUE",
+              getRRule(),
+              "END:VEVENT",
+            ].join("\r\n") + "\r\n";
+          });
+
+          const ics = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "CALSCALE:GREGORIAN",
+            "PRODID:-//Groundwork//Prayer App//EN",
+            events.trim(),
+            "END:VCALENDAR",
+          ].join("\r\n");
+
+          const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = "time-with-god.ics"; a.click();
+          URL.revokeObjectURL(url);
+        };
+
+        const generateGoogleLink = () => {
+          const t = schedule.times[0] || "07:00";
+          const [h, m] = t.split(":").map(Number);
+          const now = new Date();
+          now.setHours(h, m, 0, 0);
+          const end = new Date(now.getTime() + schedule.duration * 60000);
+          const fmt = (d) => d.toISOString().replace(/[-:]/g,"").split(".")[0] + "Z";
+          const recur = schedule.freq === "daily" || schedule.freq === "2x" ? "RRULE:FREQ%3DDAILY" :
+            schedule.freq === "other" ? "RRULE:FREQ%3DDAILY%3BINTERVAL%3D2" : "RRULE:FREQ%3DDAILY";
+          const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=Time+with+God&dates=${fmt(now)}/${fmt(end)}&recur=${recur}&details=Scheduled+prayer+time+%E2%80%94+Groundwork+app`;
+          window.open(url, "_blank");
+        };
+
+        const ready = schedule.freq && (schedule.freq !== "custom" || schedule.customDays.length > 0);
+
+        return (
+          <div style={{ padding: "24px", paddingBottom: 80 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 6 }}>Schedule</div>
+            <div style={{ fontSize: 13, color: C.stone, marginBottom: 24, lineHeight: 1.6 }}>
+              Consistency and practice bring prayer to life. Block your time and protect it.
+            </div>
+
+            {/* Frequency */}
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 12 }}>How often?</div>
+            {freqOptions.map(f => (
+              <div key={f.id} onClick={() => {
+                  const times = f.id === "2x" ? ["07:00","19:00"] : ["07:00"];
+                  setSchedule({ ...schedule, freq: f.id, times });
+                }}
+                style={{ background: schedule.freq === f.id ? C.accent : C.white, borderRadius: 12, padding: "14px 18px", marginBottom: 8, cursor: "pointer", border: `1px solid ${schedule.freq === f.id ? C.accent : C.paper}`, display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.15s" }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: schedule.freq === f.id ? C.white : C.ink }}>{f.label}</div>
+                  <div style={{ fontSize: 12, color: schedule.freq === f.id ? "rgba(255,255,255,0.7)" : C.stone }}>{f.desc}</div>
+                </div>
+                {schedule.freq === f.id && <span style={{ color: C.white, fontSize: 16 }}>✓</span>}
+              </div>
+            ))}
+
+            {/* Custom days */}
+            {schedule.freq === "custom" && (
+              <>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", margin: "20px 0 12px" }}>Which days?</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                  {days.map(d => (
+                    <div key={d} onClick={() => toggleDay(d)}
+                      style={{ padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer", background: schedule.customDays.includes(d) ? C.accent : C.white, color: schedule.customDays.includes(d) ? C.white : C.ink, border: `1px solid ${schedule.customDays.includes(d) ? C.accent : C.paper}`, transition: "all 0.15s" }}>
+                      {d}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Time pickers */}
+            {schedule.freq && (
+              <>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", margin: "20px 0 12px" }}>
+                  {schedule.freq === "2x" ? "Times" : "Time"}
+                </div>
+                {schedule.times.map((t, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                    {schedule.freq === "2x" && (
+                      <div style={{ fontSize: 12, color: C.stone, width: 60, flexShrink: 0 }}>{i === 0 ? "Morning" : "Evening"}</div>
+                    )}
+                    <input type="time" value={t} onChange={e => updateTime(i, e.target.value)}
+                      style={{ flex: 1, padding: "12px 14px", borderRadius: 10, border: `1px solid ${C.paper}`, background: C.white, fontSize: 15, color: C.ink, fontFamily: "inherit", outline: "none" }} />
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Duration */}
+            {schedule.freq && (
+              <>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", margin: "20px 0 12px" }}>Duration</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                  {[10, 15, 20, 30, 45, 60].map(d => (
+                    <div key={d} onClick={() => setSchedule({ ...schedule, duration: d })}
+                      style={{ padding: "8px 16px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer", background: schedule.duration === d ? C.accent : C.white, color: schedule.duration === d ? C.white : C.ink, border: `1px solid ${schedule.duration === d ? C.accent : C.paper}`, transition: "all 0.15s" }}>
+                      {d}m
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Export buttons */}
+            {ready && (
+              <div style={{ marginTop: 28 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 14 }}>Add to calendar</div>
+                <button onClick={generateICS} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
+                  ↓ Download .ics file
+                </button>
+                <button onClick={generateGoogleLink} style={{ background: C.white, color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%" }}>
+                  Open Google Calendar
+                </button>
+                <div style={{ fontSize: 11, color: C.stone, marginTop: 12, lineHeight: 1.6, textAlign: "center" }}>
+                  .ics works with Apple Calendar, Outlook, and Google Calendar. Events are marked busy so your time stays protected.
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
       const headerTitle = { learn: "The Lord's Prayer", board: "Prayer Board", fast: "Fasting" };
 
       return (
         <div style={{ fontFamily: "-apple-system, 'Inter', sans-serif", background: C.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", color: C.ink }}>
           {/* Header */}
-          <div style={{ padding: "52px 24px 20px", borderBottom: `1px solid ${C.paper}` }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: C.stone, textTransform: "uppercase", marginBottom: 4 }}>Groundwork</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: "-0.02em" }}>{headerTitle[tab]}</div>
+          <div style={{ padding: "52px 24px 20px", borderBottom: `1px solid ${C.paper}`, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: C.stone, textTransform: "uppercase", marginBottom: 4 }}>Groundwork</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: "-0.02em" }}>
+                {showSettings ? "Schedule" : headerTitle[tab]}
+              </div>
+            </div>
+            <button onClick={() => setShowSettings(!showSettings)} style={{ background: showSettings ? C.accent : C.paper, border: "none", borderRadius: 10, width: 38, height: 38, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, marginBottom: 2 }}>
+              {showSettings ? "✕" : "⚙"}
+            </button>
           </div>
 
           {/* Nav */}
@@ -548,9 +809,13 @@ Ending with this petition keeps prayer honest. Life is hard. Not everything is a
             ))}
           </nav>
 
-          {tab === "learn" && renderLearn()}
-          {tab === "board" && renderBoard()}
-          {tab === "fast"  && renderFast()}
+          {showSettings ? renderSettings() : (
+            <>
+              {tab === "learn" && renderLearn()}
+              {tab === "board" && renderBoard()}
+              {tab === "fast"  && renderFast()}
+            </>
+          )}
         </div>
       );
     }
