@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Groundwork</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #EEF1F8; font-family: -apple-system, 'Inter', sans-serif; }
+    button { font-family: inherit; }
+    textarea, input { font-family: inherit; }
+    ::-webkit-scrollbar { width: 0; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ── REPLACE with your hosted .mp3 URL (S3, Cloudflare R2, etc.) ──────────
+    const MUSIC_URL = "beginning.mp3";
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const C = {
+      ink:      "#1A1F2E",
+      bg:       "#EEF1F8",
+      paper:    "#DDE3F0",
+      accent:   "#6B5FD6",
+      sage:     "#4A9E7F",
+      stone:    "#8A93A8",
+      white:    "#FFFFFF",
+      dark:     "#2D2A5E",
+      body:     "#2C3347",
+    };
+
+    const SEGMENTS = [
+      {
+        id: 1,
+        phrase: "Our Father in heaven",
+        tag: "Getting your eyes off yourself and onto Him",
+        duration: "5 min",
+        complete: true,
+        teaching: `Most of us begin prayer focused on ourselves — our needs, our problems, our day. Jesus begins somewhere else entirely: with God.
+
+"Our Father in heaven" is a reorientation before a single request is made. Before you ask for anything, you are directed to look up — away from your situation, away from yourself — and fix your attention on who God is.
+
+Notice it's "Our" not "My." Prayer isn't a private transaction between you and God about your life. You enter prayer as part of a family. That shifts something.
+
+There's also an important distinction Jesus is building in here: the difference between worship and praise. Praise is responding to what God has done — his acts, his blessings, his faithfulness in your story. Worship goes deeper. Worship is acknowledging who God is independent of anything He has done for you. His holiness. His sovereignty. His eternal nature. These are true whether your life is going well or falling apart.
+
+Prayer that begins with worship — not requests, not even gratitude — is prayer that starts in the right place. You are not the center. He is.`,
+        practice: "Before saying anything else, spend 60 seconds naming who God is — not what He's done for you, but who He is. Eternal. Holy. Good in His nature. Let that be the first thing out of your mouth.",
+        distinction: { label: "Worship vs. Praise", body: "Praise responds to what God has done. Worship acknowledges who God is — regardless of your circumstances." },
+      },
+      {
+        id: 2,
+        phrase: "Hallowed be your name",
+        tag: "Orienting your heart",
+        duration: "5 min",
+        complete: true,
+        teaching: `"Hallowed" means set apart — holy, weighty, unlike anything else. This line reorients you before you ask for anything.
+
+Most people open prayer with requests. Jesus opens with worship. Why? Because prayer isn't primarily a transaction. It's a relationship.
+
+When you declare God's name as holy, you're reminding yourself who He is — and who you are in relation to Him. That changes what you ask for and how you ask.`,
+        practice: "Name one attribute of God before asking Him for anything today. Just one. Holy. Faithful. Good. Let it land.",
+        distinction: null,
+      },
+      {
+        id: 3,
+        phrase: "Your kingdom come, your will be done",
+        tag: "Surrendering your agenda",
+        duration: "6 min",
+        complete: false,
+        teaching: `This is the hardest line in the prayer. You're asking God's agenda to replace yours.
+
+"Your kingdom come" means: may the way things are in heaven become the way things are here. Justice. Peace. Wholeness. Healing.
+
+"Your will be done" is the surrender clause. Jesus prayed this exact phrase in Gethsemane right before the cross. It's not passive resignation — it's active trust.`,
+        practice: "Write down one thing you're anxious about. Then write: 'Your will be done in this.' Say it and mean it as best you can.",
+        distinction: null,
+      },
+      {
+        id: 4,
+        phrase: "Give us today our daily bread",
+        tag: "Dependence and provision",
+        duration: "5 min",
+        complete: false,
+        teaching: `Notice: daily bread — not a year's supply. Jesus is building a rhythm of daily return, daily dependence.
+
+This echoes the Israelites in the wilderness — manna fell every morning. You couldn't stockpile it. God designed it that way.
+
+Asking for bread is permission to bring your ordinary needs to God. Not just the big crises. Your work. Your health. Your relationships. Today's actual needs.`,
+        practice: "Name one specific, ordinary need and ask for it plainly. No religious language required.",
+        distinction: null,
+      },
+      {
+        id: 5,
+        phrase: "Forgive us our debts",
+        tag: "The confession before the asking",
+        duration: "7 min",
+        complete: false,
+        teaching: `Confession isn't punishment — it's restoration. Sin creates distance. Confession closes it.
+
+The word "debts" (Greek: opheilema) means something owed. Sin isn't just rule-breaking; it's a relational breach that creates an imbalance.
+
+Jesus puts confession in the middle of the prayer — not at the end as cleanup, not skipped over. It's central. You can't move freely into intercession carrying unaddressed weight.`,
+        practice: "Be specific. 'Forgive me for being short with my family this morning' lands differently than 'forgive me for my sins.' Specificity is the practice.",
+        distinction: null,
+      },
+      {
+        id: 6,
+        phrase: "As we forgive our debtors",
+        tag: "Receiving and giving are linked",
+        duration: "6 min",
+        complete: false,
+        teaching: `This is the only line Jesus unpacks after finishing the prayer (Matthew 6:14–15). That's not an accident.
+
+He's not saying forgiveness is earned. He's saying an unforgiving heart is a closed hand — it can't receive what it won't give.
+
+Forgiveness isn't excusing what happened. It's releasing your claim to retribution. It's saying: I will not let this debt define the relationship.`,
+        practice: "Is there a name that comes to mind? You don't have to feel it yet. Forgiveness often starts as a decision before it becomes an emotion. Can you say the words?",
+        distinction: null,
+      },
+      {
+        id: 7,
+        phrase: "Deliver us from evil",
+        tag: "You're in a battle",
+        duration: "5 min",
+        complete: false,
+        teaching: `The prayer ends with a war cry. Not fear — awareness. There is opposition to goodness in the world, and Jesus wants you to name it.
+
+"The evil one" in Greek (poneros) suggests an active adversary. Jesus isn't teaching anxiety about a monster under the bed. He's teaching vigilance — the kind a soldier has on deployment.
+
+Ending with this petition keeps prayer honest. Life is hard. Not everything is a blessing in disguise. Some things are just darkness that needs confronting.`,
+        practice: "Name one area of your life or someone else's that needs protection. Pray for deliverance from that specific thing.",
+        distinction: null,
+      },
+    ];
+
+    const FAST_TYPES = [
+      { id: "full",    label: "Full Fast",     desc: "Water only" },
+      { id: "partial", label: "Partial Fast",  desc: "One meal or specific foods" },
+      { id: "daniel",  label: "Daniel Fast",   desc: "No meat, sweets, or wine" },
+      { id: "media",   label: "Media Fast",    desc: "No screens/social media" },
+      { id: "custom",  label: "Custom",        desc: "Your own parameters" },
+    ];
+
+    const INITIAL_REQUESTS = [
+      { id: 1, name: "Marcus", request: "Job interview on Thursday", date: "Jun 20", answered: false },
+      { id: 2, name: "Mom",    request: "Knee surgery recovery",     date: "Jun 15", answered: false },
+      { id: 3, name: "Deon",   request: "Marriage counseling",       date: "Jun 10", answered: true  },
+    ];
+
+    // ── Practice Timer ────────────────────────────────────────────────────────
+    function PracticeTimer({ practiceText }) {
+      const [state, setState] = useState("idle");
+      const [seconds, setSeconds] = useState(60);
+      const [musicOn, setMusicOn] = useState(false);
+      const audioRef = useRef(null);
+      const intervalRef = useRef(null);
+
+      useEffect(() => {
+        audioRef.current = new Audio(MUSIC_URL);
+        audioRef.current.loop = true;
+        audioRef.current.volume = 0.35;
+        return () => { audioRef.current.pause(); clearInterval(intervalRef.current); };
+      }, []);
+
+      const toggleMusic = () => {
+        if (musicOn) { audioRef.current.pause(); setMusicOn(false); }
+        else { audioRef.current.play().catch(() => {}); setMusicOn(true); }
+      };
+
+      const startTimer = () => {
+        setState("running");
+        setSeconds(60);
+        audioRef.current.play().catch(() => {});
+        setMusicOn(true);
+        intervalRef.current = setInterval(() => {
+          setSeconds(prev => {
+            if (prev <= 1) {
+              clearInterval(intervalRef.current);
+              setState("done");
+              audioRef.current.pause();
+              setMusicOn(false);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      };
+
+      const resetTimer = () => {
+        clearInterval(intervalRef.current);
+        setState("idle");
+        setSeconds(60);
+        audioRef.current.pause();
+        setMusicOn(false);
+      };
+
+      const circumference = 2 * Math.PI * 44;
+      const progress = state === "idle" ? 1 : seconds / 60;
+      const dashOffset = circumference * (1 - progress);
+
+      return (
+        <div style={{ background: C.ink, borderRadius: 16, padding: "22px 20px", marginTop: 20 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginBottom: 10 }}>Practice</div>
+          <div style={{ fontSize: 13, lineHeight: 1.65, color: "rgba(255,255,255,0.75)", marginBottom: 22 }}>{practiceText}</div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            {/* Ring */}
+            <div style={{ position: "relative", width: 100, height: 100, flexShrink: 0 }}>
+              <svg width="100" height="100" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="5" />
+                <circle cx="50" cy="50" r="44" fill="none"
+                  stroke={state === "done" ? C.sage : C.accent}
+                  strokeWidth="5" strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={dashOffset}
+                  transform="rotate(-90 50 50)"
+                  style={{ transition: "stroke-dashoffset 0.9s linear, stroke 0.4s" }}
+                />
+              </svg>
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                {state === "done"
+                  ? <span style={{ fontSize: 22, color: C.sage }}>✓</span>
+                  : <>
+                      <span style={{ fontSize: 26, fontWeight: 700, color: C.white, lineHeight: 1 }}>{seconds}</span>
+                      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>sec</span>
+                    </>
+                }
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div style={{ flex: 1 }}>
+              {state === "idle" && (
+                <button onClick={startTimer} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 10, padding: "12px 0", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
+                  Begin practice
+                </button>
+              )}
+              {state === "running" && (
+                <button onClick={resetTimer} style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)", border: "none", borderRadius: 10, padding: "12px 0", fontSize: 13, cursor: "pointer", width: "100%", marginBottom: 10 }}>
+                  Reset
+                </button>
+              )}
+              {state === "done" && (
+                <button onClick={resetTimer} style={{ background: C.sage, color: C.white, border: "none", borderRadius: 10, padding: "12px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
+                  Go again
+                </button>
+              )}
+              <button onClick={toggleMusic} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${musicOn ? C.accent : "rgba(255,255,255,0.1)"}`, borderRadius: 10, padding: "10px 0", fontSize: 12, color: musicOn ? C.accent : "rgba(255,255,255,0.45)", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 500 }}>
+                {musicOn ? "♪ Music on" : "♪ Play music"}
+              </button>
+            </div>
+          </div>
+
+          {state === "done" && (
+            <div style={{ marginTop: 16, fontSize: 13, color: "rgba(255,255,255,0.5)", textAlign: "center" }}>
+              Well done. Take a breath before moving on.
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Fast Timer ────────────────────────────────────────────────────────────
+    function FastTimer({ startTime }) {
+      const [, setTick] = useState(0);
+      useEffect(() => {
+        const id = setInterval(() => setTick(t => t + 1), 1000);
+        return () => clearInterval(id);
+      }, []);
+      const diff = Math.floor((new Date() - startTime) / 1000);
+      const h = Math.floor(diff / 3600).toString().padStart(2, "0");
+      const m = Math.floor((diff % 3600) / 60).toString().padStart(2, "0");
+      const s = (diff % 60).toString().padStart(2, "0");
+      return <span>{h}:{m}:{s}</span>;
+    }
+
+    // ── Main App ──────────────────────────────────────────────────────────────
+    function App() {
+      const [tab, setTab]                   = useState("learn");
+      const [selected, setSelected]         = useState(null);
+      const [segments, setSegments]         = useState(SEGMENTS);
+      const [fastType, setFastType]         = useState(null);
+      const [fastActive, setFastActive]     = useState(false);
+      const [fastStart, setFastStart]       = useState(null);
+      const [fastNotes, setFastNotes]       = useState("");
+      const [requests, setRequests]         = useState(INITIAL_REQUESTS);
+      const [newReq, setNewReq]             = useState({ name: "", request: "" });
+      const [showAdd, setShowAdd]           = useState(false);
+
+      const completed = segments.filter(s => s.complete).length;
+
+      const markComplete = (id) => {
+        setSegments(segments.map(s => s.id === id ? { ...s, complete: true } : s));
+        setSelected(null);
+      };
+
+      const addRequest = () => {
+        if (!newReq.name || !newReq.request) return;
+        setRequests([...requests, { id: Date.now(), name: newReq.name, request: newReq.request, date: "Today", answered: false }]);
+        setNewReq({ name: "", request: "" });
+        setShowAdd(false);
+      };
+
+      const toggleAnswered = (id) => setRequests(requests.map(r => r.id === id ? { ...r, answered: !r.answered } : r));
+
+      // ── Styles ──
+      const navBtn = (active) => ({
+        flex: 1, padding: "14px 0", fontSize: 12, fontWeight: active ? 600 : 400,
+        letterSpacing: "0.06em", textTransform: "uppercase", background: "none",
+        border: "none", cursor: "pointer",
+        color: active ? C.accent : C.stone,
+        borderBottom: active ? `2px solid ${C.accent}` : "2px solid transparent",
+        transition: "all 0.15s",
+      });
+
+      const card = (active) => ({
+        background: C.white, borderRadius: 12, padding: "18px 20px", marginBottom: 10,
+        cursor: "pointer", border: `1px solid ${active ? C.accent : "transparent"}`,
+        transition: "all 0.15s",
+      });
+
+      const btn = (variant = "primary") => ({
+        background: variant === "primary" ? C.accent : variant === "sage" ? C.sage : "transparent",
+        color: variant === "ghost" ? C.stone : C.white,
+        border: variant === "ghost" ? `1px solid ${C.paper}` : "none",
+        borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 600,
+        cursor: "pointer", width: "100%", marginTop: 16,
+      });
+
+      const outlineBtn = {
+        background: "none", border: `1px solid ${C.accent}`, borderRadius: 10,
+        padding: "12px 20px", fontSize: 13, color: C.accent, cursor: "pointer",
+        fontWeight: 600, width: "100%", marginBottom: 20,
+      };
+
+      const inputStyle = {
+        width: "100%", padding: "12px 14px", borderRadius: 10,
+        border: `1px solid ${C.paper}`, background: C.white, fontSize: 14,
+        color: C.ink, marginBottom: 10, outline: "none", fontFamily: "inherit",
+        boxSizing: "border-box",
+      };
+
+      const fastTypeCard = (sel) => ({
+        background: sel ? C.accent : C.white, borderRadius: 10, padding: "14px 16px",
+        cursor: "pointer", border: `1px solid ${sel ? C.accent : C.paper}`, transition: "all 0.15s",
+      });
+
+      // ── Learn Tab ──
+      const renderLearn = () => {
+        if (selected) {
+          const seg = segments.find(s => s.id === selected);
+          return (
+            <div style={{ padding: "24px", paddingBottom: 80 }}>
+              <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", fontSize: 13, color: C.accent, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>
+                ← Back
+              </button>
+              <div style={{ background: C.white, borderRadius: 16, padding: 24, marginBottom: 0 }}>
+                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: C.ink, marginBottom: 6 }}>"{seg.phrase}"</div>
+                <div style={{ fontSize: 12, color: C.accent, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 20 }}>{seg.tag}</div>
+                <div style={{ height: 1, background: C.paper, margin: "0 0 20px 0" }} />
+                <div style={{ fontSize: 14, lineHeight: 1.75, color: C.body, whiteSpace: "pre-line" }}>{seg.teaching}</div>
+                {seg.distinction && (
+                  <div style={{ background: C.bg, borderLeft: `3px solid ${C.accent}`, borderRadius: "0 8px 8px 0", padding: "14px 16px", margin: "18px 0 0 0" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: C.accent, textTransform: "uppercase", marginBottom: 6 }}>{seg.distinction.label}</div>
+                    <div style={{ fontSize: 13, lineHeight: 1.6, color: C.ink }}>{seg.distinction.body}</div>
+                  </div>
+                )}
+              </div>
+              <PracticeTimer practiceText={seg.practice} />
+              <button onClick={() => markComplete(seg.id)} style={btn("primary")}>Mark complete</button>
+            </div>
+          );
+        }
+
+        return (
+          <div style={{ padding: "24px", paddingBottom: 80 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 16 }}>The Lord's Prayer</div>
+            <div style={{ height: 3, background: C.paper, borderRadius: 2, marginBottom: 8, overflow: "hidden" }}>
+              <div style={{ height: "100%", background: C.accent, borderRadius: 2, width: `${(completed / segments.length) * 100}%`, transition: "width 0.4s" }} />
+            </div>
+            <div style={{ fontSize: 12, color: C.stone, marginBottom: 24 }}>{completed} of {segments.length} sessions complete</div>
+
+            {segments.map(seg => (
+              <div key={seg.id} style={card(seg.complete)} onClick={() => setSelected(seg.id)}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4, letterSpacing: "-0.01em" }}>"{seg.phrase}"</div>
+                    <div style={{ fontSize: 12, color: C.stone }}>{seg.tag}</div>
+                  </div>
+                  <div style={{ flexShrink: 0, marginLeft: 12 }}>
+                    {seg.complete
+                      ? <span style={{ fontSize: 10, fontWeight: 600, color: C.accent, letterSpacing: "0.08em", textTransform: "uppercase" }}>Done</span>
+                      : <span style={{ fontSize: 12, color: C.stone }}>{seg.duration}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <div style={{ marginTop: 24, padding: "18px 20px", background: C.paper, borderRadius: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.stone, textTransform: "uppercase", marginBottom: 8 }}>Matthew 6:9–13</div>
+              <div style={{ fontSize: 13, lineHeight: 1.75, color: C.body, fontStyle: "italic" }}>
+                "Our Father in heaven, hallowed be your name. Your kingdom come, your will be done, on earth as it is in heaven. Give us this day our daily bread, and forgive us our debts, as we also have forgiven our debtors. And lead us not into temptation, but deliver us from evil."
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // ── Board Tab ──
+      const renderBoard = () => (
+        <div style={{ padding: "24px", paddingBottom: 80 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 16 }}>Prayer Board</div>
+
+          {showAdd ? (
+            <div style={{ background: C.white, borderRadius: 16, padding: 24, marginBottom: 16 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, color: C.ink }}>Add a request</div>
+              <input style={inputStyle} placeholder="Name" value={newReq.name} onChange={e => setNewReq({ ...newReq, name: e.target.value })} />
+              <input style={inputStyle} placeholder="What are you praying for?" value={newReq.request} onChange={e => setNewReq({ ...newReq, request: e.target.value })} />
+              <button onClick={addRequest} style={btn("primary")}>Add to board</button>
+              <button onClick={() => setShowAdd(false)} style={{ ...outlineBtn, marginTop: 10, marginBottom: 0 }}>Cancel</button>
+            </div>
+          ) : (
+            <button onClick={() => setShowAdd(true)} style={outlineBtn}>+ Add request</button>
+          )}
+
+          {requests.filter(r => !r.answered).map(r => (
+            <div key={r.id} style={{ background: C.white, borderRadius: 12, padding: "16px 18px", marginBottom: 10, display: "flex", gap: 14 }}>
+              <div onClick={() => toggleAnswered(r.id)} style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${C.paper}`, flexShrink: 0, marginTop: 2, cursor: "pointer" }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{r.name}</div>
+                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{r.request}</div>
+                <div style={{ fontSize: 11, color: C.stone, marginTop: 6 }}>Added {r.date}</div>
+              </div>
+            </div>
+          ))}
+
+          {requests.filter(r => r.answered).length > 0 && (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", margin: "24px 0 16px" }}>Answered</div>
+              {requests.filter(r => r.answered).map(r => (
+                <div key={r.id} style={{ background: C.white, borderRadius: 12, padding: "16px 18px", marginBottom: 10, display: "flex", gap: 14, opacity: 0.5 }}>
+                  <div onClick={() => toggleAnswered(r.id)} style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${C.sage}`, background: C.sage, flexShrink: 0, marginTop: 2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ color: "white", fontSize: 11, fontWeight: 700 }}>✓</span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, textDecoration: "line-through" }}>{r.name}</div>
+                    <div style={{ fontSize: 13, color: C.stone }}>{r.request}</div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      );
+
+      // ── Fast Tab ──
+      const renderFast = () => (
+        <div style={{ padding: "24px", paddingBottom: 80 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 16 }}>Fasting</div>
+
+          {!fastActive ? (
+            <>
+              <div style={{ background: C.white, borderRadius: 16, padding: 24, marginBottom: 20 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, letterSpacing: "-0.01em" }}>Why fast?</div>
+                <div style={{ fontSize: 14, lineHeight: 1.75, color: C.body }}>
+                  Fasting is hunger redirected. When your body says "eat," you say "pray." That friction is the point — it creates a physical reminder to seek God rather than comfort.<br /><br />
+                  Jesus assumed his followers would fast (Matthew 6:16 — "when you fast," not "if"). Fasting isn't punishment. It's training your body to follow what your spirit knows.
+                </div>
+              </div>
+
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 16 }}>Choose your fast</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+                {FAST_TYPES.map(ft => (
+                  <div key={ft.id} style={fastTypeCard(fastType === ft.id)} onClick={() => setFastType(ft.id)}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: fastType === ft.id ? C.white : C.ink, marginBottom: 2 }}>{ft.label}</div>
+                    <div style={{ fontSize: 11, color: fastType === ft.id ? "rgba(255,255,255,0.75)" : C.stone }}>{ft.desc}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 12 }}>Intention (optional)</div>
+              <textarea style={{ ...inputStyle, height: 80, resize: "none", lineHeight: 1.6 }} placeholder="What are you fasting for?" value={fastNotes} onChange={e => setFastNotes(e.target.value)} />
+              <button disabled={!fastType} onClick={() => { setFastActive(true); setFastStart(new Date()); }}
+                style={{ ...btn("primary"), opacity: fastType ? 1 : 0.4 }}>
+                Begin fast
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ background: C.dark, borderRadius: 14, padding: "20px 22px", marginBottom: 20, color: C.white }}>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>Fast in progress</div>
+                <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 4 }}><FastTimer startTime={fastStart} /></div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
+                  {FAST_TYPES.find(f => f.id === fastType)?.label}{fastNotes ? ` · ${fastNotes}` : ""}
+                </div>
+              </div>
+
+              <div style={{ background: C.white, borderRadius: 16, padding: 24, marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.stone, textTransform: "uppercase", marginBottom: 10 }}>Isaiah 58:6</div>
+                <div style={{ fontSize: 13, lineHeight: 1.75, color: C.body, fontStyle: "italic" }}>
+                  "Is not this the fast that I choose: to loose the bonds of wickedness, to undo the straps of the yoke, to let the oppressed go free, and to break every yoke?"
+                </div>
+              </div>
+
+              <button onClick={() => { setFastActive(false); setFastType(null); setFastStart(null); setFastNotes(""); }}
+                style={btn("ghost")}>
+                End fast
+              </button>
+            </>
+          )}
+        </div>
+      );
+
+      const headerTitle = { learn: "The Lord's Prayer", board: "Prayer Board", fast: "Fasting" };
+
+      return (
+        <div style={{ fontFamily: "-apple-system, 'Inter', sans-serif", background: C.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", color: C.ink }}>
+          {/* Header */}
+          <div style={{ padding: "52px 24px 20px", borderBottom: `1px solid ${C.paper}` }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: C.stone, textTransform: "uppercase", marginBottom: 4 }}>Groundwork</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: "-0.02em" }}>{headerTitle[tab]}</div>
+          </div>
+
+          {/* Nav */}
+          <nav style={{ display: "flex", borderBottom: `1px solid ${C.paper}`, background: C.bg, position: "sticky", top: 0, zIndex: 10 }}>
+            {[["learn","Learn"],["board","Board"],["fast","Fast"]].map(([id, label]) => (
+              <button key={id} style={navBtn(tab === id)} onClick={() => setTab(id)}>{label}</button>
+            ))}
+          </nav>
+
+          {tab === "learn" && renderLearn()}
+          {tab === "board" && renderBoard()}
+          {tab === "fast"  && renderFast()}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
