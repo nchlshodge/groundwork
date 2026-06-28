@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Groundwork</title>
+  <!-- Firebase CDN -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <!-- React -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -23,6 +28,20 @@
 
     // ── REPLACE with your hosted .mp3 URL (S3, Cloudflare R2, etc.) ──────────
     const MUSIC_URL = "beginning.mp3";
+
+    // ── Firebase Setup ────────────────────────────────────────────────────────
+    const firebaseConfig = {
+      apiKey: "AIzaSyBmjqDTNiMIMdPWX-WdByr3p_y4MIc6hvM",
+      authDomain: "groundwork-56c28.firebaseapp.com",
+      projectId: "groundwork-56c28",
+      storageBucket: "groundwork-56c28.firebasestorage.app",
+      messagingSenderId: "641739206937",
+      appId: "1:641739206937:web:6f4bd0cb975e48395cd588"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db   = firebase.firestore();
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
     // ─────────────────────────────────────────────────────────────────────────
 
     const C = {
@@ -1542,8 +1561,60 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       );
     }
 
+
+    // ── Login Screen ──────────────────────────────────────────────────────────
+    function LoginScreen({ onLogin }) {
+      const [loading, setLoading] = React.useState(false);
+      const [error, setError]     = React.useState(null);
+
+      const signIn = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          await auth.signInWithPopup(googleProvider);
+        } catch (e) {
+          setError("Sign in failed. Please try again.");
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#2D2A5E", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", maxWidth: 430, margin: "0 auto" }}>
+          <div style={{ width: 64, height: 64, borderRadius: 18, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+            <span style={{ fontSize: 28 }}>🙏</span>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginBottom: 10 }}>Groundwork</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.03em", textAlign: "center", lineHeight: 1.2, marginBottom: 12 }}>
+            Learning to pray starts here.
+          </div>
+          <div style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", textAlign: "center", lineHeight: 1.7, marginBottom: 48 }}>
+            Sign in to save your prayer board and track what God is doing in your life.
+          </div>
+          <button onClick={signIn} disabled={loading}
+            style={{ background: "#FFFFFF", color: "#2D2A5E", border: "none", borderRadius: 14, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, opacity: loading ? 0.7 : 1, marginBottom: 16 }}>
+            <svg width="20" height="20" viewBox="0 0 48 48">
+              <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+              <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+              <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+              <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+            </svg>
+            {loading ? "Signing in..." : "Continue with Google"}
+          </button>
+          {error && <div style={{ fontSize: 13, color: "#FF6B6B", textAlign: "center" }}>{error}</div>}
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", lineHeight: 1.6, marginTop: 24 }}>
+            Your prayer board is private and only visible to you.
+          </div>
+        </div>
+      );
+    }
+
     // ── Main App ──────────────────────────────────────────────────────────────
     function App() {
+      // ── Auth state ──
+      const [user, setUser]                 = useState(null);
+      const [authLoading, setAuthLoading]   = useState(true);
+
+      // ── App state ──
       const [tab, setTab]                   = useState("learn");
       const [showHome, setShowHome]         = useState(true);
       const [showSettings, setShowSettings] = useState(false);
@@ -1564,8 +1635,55 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [activeSection, setActiveSection] = useState(null);
       const [showAdd, setShowAdd]           = useState(false);
       const [newEntry, setNewEntry]         = useState({ name: "", text: "" });
+      const [dataLoading, setDataLoading]   = useState(false);
+
+      // ── Auth listener ──
+      useEffect(() => {
+        const unsub = auth.onAuthStateChanged(u => {
+          setUser(u);
+          setAuthLoading(false);
+        });
+        return unsub;
+      }, []);
+
+      // ── Load user data from Firestore on login ──
+      useEffect(() => {
+        if (!user) return;
+        setDataLoading(true);
+        const ref = db.collection("users").doc(user.uid);
+        ref.get().then(doc => {
+          if (doc.exists) {
+            const data = doc.data();
+            if (data.entries)     setEntries({ ...INITIAL_ENTRIES, ...data.entries });
+            if (data.segments)    setSegments(data.segments);
+            if (data.tabSegments) setTabSegments(data.tabSegments);
+            if (data.schedule)    setSchedule(data.schedule);
+          }
+          setDataLoading(false);
+        }).catch(() => setDataLoading(false));
+      }, [user]);
+
+      // ── Save to Firestore whenever data changes ──
+      useEffect(() => {
+        if (!user || dataLoading) return;
+        const ref = db.collection("users").doc(user.uid);
+        const timer = setTimeout(() => {
+          ref.set({ entries, segments, tabSegments, schedule }, { merge: true });
+        }, 1000);
+        return () => clearTimeout(timer);
+      }, [entries, segments, tabSegments, schedule, user]);
+
+      const signOut = () => auth.signOut();
 
       const completed = segments.filter(s => s.complete).length;
+
+      // ── Show login if not signed in ──
+      if (authLoading) return (
+        <div style={{ minHeight: "100vh", background: "#2D2A5E", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Loading...</div>
+        </div>
+      );
+      if (!user) return <LoginScreen />;
 
       const markComplete = (id) => {
         setSegments(segments.map(s => s.id === id ? { ...s, complete: true } : s));
@@ -2294,7 +2412,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 {showSettings ? "Schedule" : headerTitle[tab]}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {user && (
+                <img src={user.photoURL} alt="avatar" style={{ width: 32, height: 32, borderRadius: "50%", cursor: "pointer", border: `2px solid ${C.paper}` }} onClick={signOut} title="Sign out" />
+              )}
               <button onClick={() => { setShowSettings(false); setShowHome(true); }} style={{ background: C.paper, border: "none", borderRadius: 10, width: 38, height: 38, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0, marginBottom: 2 }}>
                 ⌂
               </button>
