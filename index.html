@@ -25,6 +25,11 @@
     button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
     textarea, input { font-family: inherit; -webkit-appearance: none; border-radius: 0; }
     ::-webkit-scrollbar { width: 0; }
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeSlideIn 0.4s ease forwards; }
     input[type="time"] { -webkit-appearance: none; }
     * { -webkit-tap-highlight-color: transparent; }
   </style>
@@ -894,297 +899,351 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
     }
 
 
-    function GuidedPrayerScreen({ entries, onClose }) {
-      const [kingdomScriptures] = useState(() => pickScriptures(2));
-      const [shown, setShown] = useState({
-        opening: 3, kingdom: 2, petition: 3, confession: 3, forgiveness: 3, intercession: 3, closing: 3
-      });
 
-      const showMore = (key, total) => setShown(s => ({ ...s, [key]: Math.min(s[key] + 3, total) }));
+    // ── Shared: Fade Entry List ───────────────────────────────────────────────
+    function FadeEntryList({ items, color, shownKey, shown, onShowMore }) {
+      const limit = shown[shownKey] || 3;
+      const visible = items.slice(0, limit);
+      const prevLimit = React.useRef(limit);
+      const remaining = items.length - visible.length;
 
-      const active = (key) => (entries[key] || []).filter(e => !e.done);
-
-      const EntryList = ({ sectionKey, color }) => {
-        const items = active(sectionKey);
-        if (items.length === 0) return (
-          <div style={{ fontSize: 13, color: "#8A93A8", fontStyle: "italic", padding: "10px 0" }}>
-            Nothing added yet — head to your board to add some.
-          </div>
-        );
-        const visible = items.slice(0, shown[sectionKey]);
-        const remaining = items.length - visible.length;
-        return (
-          <div>
-            {visible.map(e => (
-              <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0, marginTop: 6 }} />
-                <div style={{ fontSize: 14, color: "#2C3347", lineHeight: 1.6 }}>
-                  {e.name ? <strong>{e.name}</strong> : null}{e.name ? " — " : ""}{e.text}
-                </div>
-              </div>
-            ))}
-            {remaining > 0 && (
-              <button onClick={() => showMore(sectionKey, items.length)}
-                style={{ background: "none", border: `1px solid ${color}`, borderRadius: 20, padding: "6px 16px", fontSize: 12, color: color, cursor: "pointer", fontWeight: 600, marginTop: 4 }}>
-                + {Math.min(remaining, 3)} more
-              </button>
-            )}
-          </div>
-        );
-      };
-
-      const Section = ({ title, subtitle, color, scripture, children }) => (
-        <div style={{ background: "#FFFFFF", borderRadius: 16, padding: "20px", marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: color, textTransform: "uppercase" }}>{title}</div>
-          </div>
-          {subtitle && <div style={{ fontSize: 13, color: "#8A93A8", marginBottom: 14, fontStyle: "italic" }}>"{subtitle}"</div>}
-          {scripture && (
-            <div style={{ background: "#EEF1F8", borderLeft: "3px solid " + color, borderRadius: "0 8px 8px 0", padding: "12px 14px", marginBottom: 14 }}>
-              <div style={{ fontSize: 12, color: color, fontWeight: 600, marginBottom: 4 }}>{scripture.ref}</div>
-              <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.65, fontStyle: "italic" }}>"{scripture.text}"</div>
-            </div>
-          )}
-          {children}
+      if (items.length === 0) return (
+        <div style={{ fontSize: 13, color: "#8A93A8", fontStyle: "italic", padding: "8px 0" }}>
+          Nothing added yet — head to your board to add some.
         </div>
       );
 
       return (
-        <div style={{ padding: "5vw", paddingBottom: 100, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: "#6B5FD6", cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>
-            ← Back
-          </button>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4 }}>Guided Prayer</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 6 }}>The Lord's Prayer</div>
-          <div style={{ fontSize: 13, color: "#8A93A8", marginBottom: 28, lineHeight: 1.6 }}>
-            Pray through each section using what's on your board. Take your time.
-          </div>
-
-          {/* 1. Our Father — Praise + Worship */}
-          <Section title="Our Father in heaven" subtitle="I thank you God for... and I worship you because..." color="#4A9E7F">
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 8 }}>Praise</div>
-            <EntryList sectionKey="praise" color="#4A9E7F" />
-            <div style={{ height: 1, background: "#DDE3F0", margin: "14px 0" }} />
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 8 }}>Worship</div>
-            <EntryList sectionKey="worship" color="#6B5FD6" />
-          </Section>
-
-          {/* 2. Your Kingdom Come — Scripture */}
-          <Section title="Your kingdom come, your will be done" subtitle="God, I surrender my agenda to yours" color="#6B5FD6">
-            <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.7, marginBottom: 14 }}>
-              Pause and declare who God is. Let these verses anchor your heart before you ask for anything.
-            </div>
-            {kingdomScriptures.map((s, i) => (
-              <div key={i} style={{ background: "#EEF1F8", borderLeft: "3px solid #6B5FD6", borderRadius: "0 8px 8px 0", padding: "12px 14px", marginBottom: 10 }}>
-                <div style={{ fontSize: 12, color: "#6B5FD6", fontWeight: 600, marginBottom: 4 }}>{s.ref}</div>
-                <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.65, fontStyle: "italic" }}>"{s.text}"</div>
+        <div>
+          {visible.map((e, i) => (
+            <div key={e.id}
+              className={i >= (prevLimit.current - 3) && i < limit ? "fade-in" : ""}
+              style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0, marginTop: 6 }} />
+              <div style={{ fontSize: 14, color: "#2C3347", lineHeight: 1.6 }}>
+                {e.name ? <strong>{e.name}</strong> : null}{e.name ? " — " : ""}{e.text}
               </div>
-            ))}
-          </Section>
-
-          {/* 3. Daily Bread — Petition */}
-          <Section title="Give us today our daily bread" subtitle="God, I am asking for this for myself..." color="#5B8DD9">
-            <EntryList sectionKey="petition" color="#5B8DD9" />
-          </Section>
-
-          {/* 4. Forgive Us — Confession */}
-          <Section title="Forgive us our debts" subtitle="God, here is where I messed up..." color="#9E6B8A">
-            <EntryList sectionKey="confession" color="#9E6B8A" />
-          </Section>
-
-          {/* 5. As We Forgive — Forgiveness */}
-          <Section title="As we forgive our debtors" subtitle="God, I choose to forgive..." color="#C0724A">
-            <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.7, marginBottom: 14 }}>
-              Forgiveness starts as a decision before it becomes a feeling. Name them and release your claim.
             </div>
-            <EntryList sectionKey="forgiveness" color="#C0724A" />
-          </Section>
-
-          {/* 6. Deliver Us — Intercession */}
-          <Section title="Deliver us from evil" subtitle="God, I pray for other people..." color="#B87333">
-            <EntryList sectionKey="intercession" color="#B87333" />
-          </Section>
-
-          {/* 7. Doxology — Worship Closing */}
-          <div style={{ background: "#2D2A5E", borderRadius: 16, padding: "20px", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: 8 }}>For thine is the kingdom</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontStyle: "italic", marginBottom: 16 }}>
-              "For yours is the kingdom and the power and the glory forever. Amen."
-            </div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.7, marginBottom: 16 }}>
-              Close by returning to worship. What you began with — eyes on Him — is where you end.
-            </div>
-            {active("worship").slice(0, shown.closing).map(e => (
-              <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6B5FD6", flexShrink: 0, marginTop: 6 }} />
-                <div style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", lineHeight: 1.6 }}>{e.text}</div>
-              </div>
-            ))}
-            {active("worship").length > shown.closing && (
-              <button onClick={() => showMore("closing", active("worship").length)}
-                style={{ background: "none", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "6px 16px", fontSize: 12, color: "rgba(255,255,255,0.6)", cursor: "pointer", fontWeight: 600, marginTop: 4 }}>
-                + {Math.min(active("worship").length - shown.closing, 3)} more
-              </button>
-            )}
-          </div>
-
-          <button onClick={onClose} style={{ background: "#6B5FD6", color: "#FFFFFF", border: "none", borderRadius: 10, padding: "16px 24px", fontSize: 15, fontWeight: 600, cursor: "pointer", width: "100%", marginTop: 8, letterSpacing: "0.01em" }}>
-            Amen
-          </button>
+          ))}
+          {remaining > 0 && (
+            <button onClick={() => { prevLimit.current = limit; onShowMore(shownKey, items.length); }}
+              style={{ background: "none", border: `1px solid ${color}`, borderRadius: 20, padding: "6px 16px", fontSize: 12, color: color, cursor: "pointer", fontWeight: 600, marginTop: 4, transition: "all 0.2s" }}>
+              + {Math.min(remaining, 3)} more
+            </button>
+          )}
         </div>
       );
+    }
+
+    // ── Shared: Step Prayer Shell ─────────────────────────────────────────────
+    function StepPrayerShell({ title, subtitle, steps, onClose, accentColor }) {
+      const [step, setStep]           = React.useState(0);
+      const [countdown, setCountdown] = React.useState(15);
+      const [unlocked, setUnlocked]   = React.useState(false);
+      const [shown, setShown]         = React.useState({});
+      const timerRef                  = React.useRef(null);
+      const isLast = step === steps.length - 1;
+
+      // Reset countdown each time step changes
+      React.useEffect(() => {
+        setCountdown(15);
+        setUnlocked(false);
+        clearInterval(timerRef.current);
+        timerRef.current = setInterval(() => {
+          setCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(timerRef.current);
+              setUnlocked(true);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        return () => clearInterval(timerRef.current);
+      }, [step]);
+
+      const showMore = (key, total) => setShown(s => ({ ...s, [key]: Math.min((s[key] || 3) + 3, total) }));
+
+      const current = steps[step];
+      const color = current.color || accentColor || "#6B5FD6";
+
+      // Progress dots
+      const Dots = () => (
+        <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 24 }}>
+          {steps.map((_, i) => (
+            <div key={i} style={{ width: i === step ? 20 : 6, height: 6, borderRadius: 3, background: i === step ? color : i < step ? color + "60" : "#DDE3F0", transition: "all 0.3s" }} />
+          ))}
+        </div>
+      );
+
+      // Countdown ring
+      const CountdownRing = () => {
+        const r = 18, circ = 2 * Math.PI * r;
+        const progress = countdown / 15;
+        return (
+          <svg width="44" height="44" viewBox="0 0 44 44" style={{ flexShrink: 0 }}>
+            <circle cx="22" cy="22" r={r} fill="none" stroke="#DDE3F0" strokeWidth="3" />
+            <circle cx="22" cy="22" r={r} fill="none" stroke={color} strokeWidth="3"
+              strokeLinecap="round" strokeDasharray={circ}
+              strokeDashoffset={circ * (1 - progress)}
+              transform="rotate(-90 22 22)"
+              style={{ transition: "stroke-dashoffset 0.9s linear" }} />
+            <text x="22" y="27" textAnchor="middle" fontSize="12" fontWeight="700" fill={color}>{countdown}</text>
+          </svg>
+        );
+      };
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#EEF1F8", display: "flex", flexDirection: "column" }}>
+          {/* Fixed header */}
+          <div style={{ padding: "52px 5vw 16px", background: "#EEF1F8", borderBottom: "1px solid #DDE3F0" }}>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: color, cursor: "pointer", padding: "0 0 12px 0", fontWeight: 500 }}>← Back</button>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4 }}>Guided Prayer</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em" }}>{title}</div>
+          </div>
+
+          {/* Scrollable content */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 5vw", maxWidth: 600, margin: "0 auto", width: "100%" }}>
+            <Dots />
+
+            {/* Section card — fades in on step change */}
+            <div key={step} className="fade-in">
+              {/* Section header */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: color, textTransform: "uppercase", marginBottom: 6 }}>
+                  {step + 1} of {steps.length}
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 4 }}>
+                  {current.title}
+                </div>
+                {current.subtitle && (
+                  <div style={{ fontSize: 13, color: "#8A93A8", fontStyle: "italic" }}>"{current.subtitle}"</div>
+                )}
+              </div>
+
+              {/* Scripture */}
+              {current.scripture && (
+                <div style={{ background: color + "15", borderLeft: `3px solid ${color}`, borderRadius: "0 10px 10px 0", padding: "12px 14px", marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: color, marginBottom: 4 }}>{current.scripture.ref}</div>
+                  <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.65, fontStyle: "italic" }}>"{current.scripture.text}"</div>
+                </div>
+              )}
+
+              {/* Note */}
+              {current.note && (
+                <div style={{ fontSize: 14, color: "#2C3347", lineHeight: 1.75, marginBottom: 16 }}>{current.note}</div>
+              )}
+
+              {/* Board entries */}
+              {current.entries && current.entries.length > 0 && (
+                <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
+                  {current.entrySections ? current.entrySections.map((sec, si) => (
+                    <div key={si}>
+                      {si > 0 && <div style={{ height: 1, background: "#DDE3F0", margin: "14px 0" }} />}
+                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 10 }}>{sec.label}</div>
+                      <FadeEntryList items={sec.items} color={sec.color} shownKey={sec.key} shown={shown} onShowMore={showMore} />
+                    </div>
+                  )) : (
+                    <FadeEntryList items={current.entries} color={color} shownKey={current.shownKey || `s${step}`} shown={shown} onShowMore={showMore} />
+                  )}
+                </div>
+              )}
+
+              {/* Extra content (dark card for doxology etc) */}
+              {current.extra && current.extra}
+            </div>
+          </div>
+
+          {/* Fixed footer — countdown + next */}
+          <div style={{ padding: "16px 5vw 32px", background: "#EEF1F8", borderTop: "1px solid #DDE3F0" }}>
+            {isLast ? (
+              <button onClick={onClose}
+                style={{ background: color, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
+                Amen
+              </button>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                {!unlocked ? <CountdownRing /> : (
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: color + "20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ fontSize: 18, color: color }}>✓</span>
+                  </div>
+                )}
+                <button onClick={() => { if (unlocked) { setStep(s => s + 1); window.scrollTo(0,0); } }}
+                  disabled={!unlocked}
+                  style={{ flex: 1, background: unlocked ? color : "#DDE3F0", color: unlocked ? "#FFFFFF" : "#8A93A8", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: unlocked ? "pointer" : "not-allowed", transition: "all 0.3s" }}>
+                  {unlocked ? "Next →" : `Take your time... (${countdown}s)`}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function GuidedPrayerScreen({ entries, onClose }) {
+      const kingdomScriptures = React.useState(() => pickScriptures(2))[0];
+      const active = (key) => (entries[key] || []).filter(e => !e.done);
+
+      const steps = [
+        {
+          title: "Our Father in heaven",
+          subtitle: "I thank you God for... and I worship you because...",
+          color: "#4A9E7F",
+          entries: [...active("praise"), ...active("worship")],
+          entrySections: [
+            { label: "Praise", key: "praise", color: "#4A9E7F", items: active("praise") },
+            { label: "Worship", key: "worship", color: "#6B5FD6", items: active("worship") },
+          ],
+        },
+        {
+          title: "Your kingdom come, your will be done",
+          subtitle: "God, I surrender my agenda to yours",
+          color: "#6B5FD6",
+          note: "Pause and declare who God is. Let these verses anchor your heart before you ask for anything.",
+          entries: [],
+          extra: (
+            <div>
+              {kingdomScriptures.map((s, i) => (
+                <div key={i} style={{ background: "#EEF1F8", borderLeft: "3px solid #6B5FD6", borderRadius: "0 8px 8px 0", padding: "12px 14px", marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, color: "#6B5FD6", fontWeight: 600, marginBottom: 4 }}>{s.ref}</div>
+                  <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.65, fontStyle: "italic" }}>"{s.text}"</div>
+                </div>
+              ))}
+            </div>
+          ),
+        },
+        {
+          title: "Give us today our daily bread",
+          subtitle: "God, I am asking for this for myself...",
+          color: "#5B8DD9",
+          entries: active("petition"),
+          shownKey: "petition",
+        },
+        {
+          title: "Forgive us our debts",
+          subtitle: "God, here is where I messed up...",
+          color: "#9E6B8A",
+          entries: active("confession"),
+          shownKey: "confession",
+        },
+        {
+          title: "As we forgive our debtors",
+          subtitle: "God, I choose to forgive...",
+          color: "#C0724A",
+          note: "Forgiveness starts as a decision before it becomes a feeling. Name them and release your claim.",
+          entries: active("forgiveness"),
+          shownKey: "forgiveness",
+        },
+        {
+          title: "Deliver us from evil",
+          subtitle: "God, I pray for other people...",
+          color: "#B87333",
+          entries: active("intercession"),
+          shownKey: "intercession",
+        },
+        {
+          title: "For thine is the kingdom",
+          subtitle: "Yours is the kingdom, the power, and the glory forever",
+          color: "#6B5FD6",
+          entries: active("worship"),
+          shownKey: "closing",
+          extra: (
+            <div style={{ background: "#2D2A5E", borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontStyle: "italic", marginBottom: 10 }}>
+                "For yours is the kingdom and the power and the glory forever. Amen."
+              </div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.7 }}>
+                Close by returning to worship. What you began with — eyes on Him — is where you end.
+              </div>
+            </div>
+          ),
+        },
+      ];
+
+      return <StepPrayerShell title="The Lord's Prayer" steps={steps} onClose={onClose} accentColor="#6B5FD6" />;
     }
 
 
     function TabernaclePrayerScreen({ entries, onClose }) {
-      const worshipVerse  = useState(() => pick("worship", 1))[0];
-      const wordVerse     = useState(() => pick("word", 1))[0];
-      const spiritVerse   = useState(() => pick("spirit", 1))[0];
-      const presenceVerse = useState(() => pick("presence", 1))[0];
-
+      const worshipVerse  = React.useState(() => pick("worship", 1))[0];
+      const wordVerse     = React.useState(() => pick("word", 1))[0];
+      const spiritVerse   = React.useState(() => pick("spirit", 1))[0];
+      const presenceVerse = React.useState(() => pick("presence", 1))[0];
       const active = (key) => (entries[key] || []).filter(e => !e.done);
-      const [shown, setShown] = useState({
-        praise: 3, worship: 3, confession: 3, forgiveness: 3, intercession: 3
-      });
-      const showMore = (key, total) => setShown(s => ({ ...s, [key]: Math.min(s[key] + 3, total) }));
-
-      const EntryList = ({ sectionKey, color }) => {
-        const items = active(sectionKey);
-        if (items.length === 0) return (
-          <div style={{ fontSize: 13, color: "#8A93A8", fontStyle: "italic", padding: "6px 0" }}>
-            Nothing added yet — head to your board to add some.
-          </div>
-        );
-        const visible = items.slice(0, shown[sectionKey]);
-        const remaining = items.length - visible.length;
-        return (
-          <div>
-            {visible.map(e => (
-              <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0, marginTop: 6 }} />
-                <div style={{ fontSize: 14, color: "#2C3347", lineHeight: 1.6 }}>
-                  {e.name ? <strong>{e.name}</strong> : null}{e.name ? " — " : ""}{e.text}
-                </div>
-              </div>
-            ))}
-            {remaining > 0 && (
-              <button onClick={() => showMore(sectionKey, items.length)}
-                style={{ background: "none", border: `1px solid ${color}`, borderRadius: 20, padding: "6px 16px", fontSize: 12, color: color, cursor: "pointer", fontWeight: 600, marginTop: 4 }}>
-                + {Math.min(remaining, 3)} more
-              </button>
-            )}
-          </div>
-        );
-      };
-
-      const ScriptureCard = ({ verse, color }) => (
-        <div style={{ background: "#EEF1F8", borderLeft: `3px solid ${color}`, borderRadius: "0 8px 8px 0", padding: "12px 14px", marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: color, fontWeight: 600, marginBottom: 4 }}>{verse.ref}</div>
-          <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.65, fontStyle: "italic" }}>"{verse.text}"</div>
-        </div>
-      );
-
       const tabAccent = "#B87333";
 
-      const Station = ({ number, name, color, children }) => (
-        <div style={{ background: "#FFFFFF", borderRadius: 16, padding: "20px", marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>{number}</span>
+      const steps = [
+        {
+          title: "The Gate",
+          subtitle: "Entering with thanksgiving",
+          color: "#4A9E7F",
+          scripture: { ref: "Psalm 100:4", text: "Enter his gates with thanksgiving, and his courts with praise! Give thanks to him; bless his name!" },
+          entries: active("praise"),
+          shownKey: "praise",
+        },
+        {
+          title: "The Brazen Altar",
+          subtitle: "Surrender and lay it all down",
+          color: "#9E6B8A",
+          scripture: { ref: "Romans 12:1", text: "Present your bodies as a living sacrifice, holy and acceptable to God, which is your spiritual worship." },
+          note: "Lay it all down. What you're carrying. What you've done. What's been done to you.",
+          entries: [...active("confession"), ...active("forgiveness")],
+          entrySections: [
+            { label: "Confession", key: "confession", color: "#9E6B8A", items: active("confession") },
+            { label: "Forgiveness", key: "forgiveness", color: "#C0724A", items: active("forgiveness") },
+          ],
+        },
+        {
+          title: "The Brazen Laver",
+          subtitle: "Cleansing through the Word",
+          color: "#5B8DD9",
+          scripture: wordVerse[0],
+          note: "Let the Word wash over you. Declare who God is.",
+          entries: active("worship"),
+          shownKey: "worship",
+        },
+        {
+          title: "The Table of Showbread",
+          subtitle: "Standing on His promises",
+          color: "#6B5FD6",
+          scripture: worshipVerse[0],
+          note: "Stand on what God has said. Declare His promises over your life and your needs.",
+          entries: [],
+        },
+        {
+          title: "The Golden Lampstand",
+          subtitle: "Inviting the Holy Spirit to lead",
+          color: "#F0A500",
+          scripture: spiritVerse[0],
+          note: "Pause here. Ask the Holy Spirit to lead the rest of your prayer. Say: "Holy Spirit, show me what to pray. I don't want to pray only my own thoughts. Lead me." Then wait quietly for a moment before continuing.",
+          entries: [],
+        },
+        {
+          title: "The Altar of Incense",
+          subtitle: "Intercession rising to God",
+          color: "#B87333",
+          scripture: { ref: "Revelation 5:8", text: "The golden bowls full of incense are the prayers of the saints." },
+          entries: active("intercession"),
+          shownKey: "intercession",
+        },
+        {
+          title: "The Holy of Holies",
+          subtitle: "Pure presence — beyond the veil",
+          color: "#6B5FD6",
+          scripture: presenceVerse[0],
+          note: "You've arrived. Stop asking. Stop declaring. Just be still in His presence. The veil was torn. You have access. Stay here as long as you can.",
+          entries: [],
+          extra: (
+            <div style={{ background: "#2D2A5E", borderRadius: 14, padding: "16px 18px", marginTop: 16 }}>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontStyle: "italic", textAlign: "center" }}>Set a timer. Say nothing. Just remain.</div>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#1A1F2E" }}>{name}</div>
-          </div>
-          {children}
-        </div>
-      );
+          ),
+        },
+      ];
 
-      return (
-        <div style={{ padding: "5vw", paddingBottom: 100, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: tabAccent, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>← Back</button>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4 }}>Guided Prayer</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 6 }}>The Tabernacle Prayer</div>
-          <div style={{ fontSize: 13, color: "#8A93A8", marginBottom: 28, lineHeight: 1.6 }}>Walk through the Tabernacle. Move at your own pace. Each station goes deeper.</div>
-
-          {/* 1. The Gate — Praise */}
-          <Station number="1" name="The Gate — Thanksgiving" color="#4A9E7F">
-            <ScriptureCard verse={{ ref: "Psalm 100:4", text: "Enter his gates with thanksgiving, and his courts with praise! Give thanks to him; bless his name!" }} color="#4A9E7F" />
-            <div style={{ fontSize: 12, color: "#8A93A8", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 8 }}>From your Praise board</div>
-            <EntryList sectionKey="praise" color="#4A9E7F" />
-          </Station>
-
-          {/* 2. Brazen Altar — Confession + Forgiveness */}
-          <Station number="2" name="The Brazen Altar — Surrender" color="#9E6B8A">
-            <ScriptureCard verse={{ ref: "Romans 12:1", text: "Present your bodies as a living sacrifice, holy and acceptable to God, which is your spiritual worship." }} color="#9E6B8A" />
-            <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.7, marginBottom: 14 }}>Lay it all down. What you're carrying. What you've done. What's been done to you.</div>
-            <div style={{ fontSize: 12, color: "#8A93A8", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 8 }}>Confession</div>
-            <EntryList sectionKey="confession" color="#9E6B8A" />
-            <div style={{ height: 1, background: "#DDE3F0", margin: "14px 0" }} />
-            <div style={{ fontSize: 12, color: "#8A93A8", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 8 }}>Forgiveness</div>
-            <EntryList sectionKey="forgiveness" color="#C0724A" />
-          </Station>
-
-          {/* 3. Brazen Laver — Worship + Word */}
-          <Station number="3" name="The Brazen Laver — Cleansing" color="#5B8DD9">
-            <ScriptureCard verse={wordVerse[0]} color="#5B8DD9" />
-            <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.7, marginBottom: 14 }}>Let the Word wash over you. Declare who God is.</div>
-            <div style={{ fontSize: 12, color: "#8A93A8", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 8 }}>From your Worship board</div>
-            <EntryList sectionKey="worship" color="#6B5FD6" />
-          </Station>
-
-          {/* 4. Table of Showbread — Promises */}
-          <Station number="4" name="The Table of Showbread — His Promises" color="#6B5FD6">
-            <ScriptureCard verse={worshipVerse[0]} color="#6B5FD6" />
-            <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.7 }}>Stand on what God has said. Declare His promises over your life and your needs.</div>
-          </Station>
-
-          {/* 5. Golden Lampstand — Holy Spirit */}
-          <Station number="5" name="The Golden Lampstand — Holy Spirit" color="#F0A500">
-            <ScriptureCard verse={spiritVerse[0]} color="#F0A500" />
-            <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.7 }}>
-              Pause here. Ask the Holy Spirit to lead the rest of your prayer. Say: "Holy Spirit, I don't want to pray only my own thoughts. Show me what to pray."
-              <br /><br />
-              Wait quietly for a moment before continuing.
-            </div>
-          </Station>
-
-          {/* 6. Altar of Incense — Intercession */}
-          <Station number="6" name="The Altar of Incense — Intercession" color="#B87333">
-            <ScriptureCard verse={{ ref: "Revelation 5:8", text: "The golden bowls full of incense are the prayers of the saints." }} color="#B87333" />
-            <div style={{ fontSize: 12, color: "#8A93A8", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 8 }}>From your Intercession board</div>
-            <EntryList sectionKey="intercession" color="#B87333" />
-          </Station>
-
-          {/* 7. Holy of Holies — Presence */}
-          <div style={{ background: "#2D2A5E", borderRadius: 16, padding: "20px", marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>7</span>
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#FFFFFF" }}>The Holy of Holies — His Presence</div>
-            </div>
-            <div style={{ background: "rgba(255,255,255,0.08)", borderLeft: "3px solid rgba(255,255,255,0.3)", borderRadius: "0 8px 8px 0", padding: "12px 14px", marginBottom: 14 }}>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 600, marginBottom: 4 }}>{presenceVerse[0].ref}</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.65, fontStyle: "italic" }}>"{presenceVerse[0].text}"</div>
-            </div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.7, marginBottom: 16 }}>
-              You've arrived. Stop asking. Stop declaring. Just be still in His presence.
-              <br /><br />
-              The veil was torn. You have access. Stay here as long as you can.
-            </div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", fontStyle: "italic", textAlign: "center" }}>Set a timer. Say nothing. Just remain.</div>
-          </div>
-
-          <button onClick={onClose} style={{ background: tabAccent, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "16px 24px", fontSize: 15, fontWeight: 600, cursor: "pointer", width: "100%", marginTop: 8 }}>
-            Amen
-          </button>
-        </div>
-      );
+      return <StepPrayerShell title="The Tabernacle Prayer" steps={steps} onClose={onClose} accentColor={tabAccent} />;
     }
 
-
-
-    // ── Daily Office Screen ───────────────────────────────────────────────────
     function DailyOfficeScreen({ onClose }) {
       const [selected, setSelected] = React.useState(null);
       const [verse, setVerse] = React.useState(null);
@@ -1342,78 +1401,42 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         return shuffled[0];
       })[0];
 
-      const boardEntries = (entries[psalmType.boardKey] || []).filter(e => !e.done);
-      const answeredEntries = (entries.praise || []).filter(e => e.done);
-      const [shown, setShown] = React.useState(3);
+      const active = (entries[psalmType.boardKey] || []).filter(e => !e.done);
+      const answered = (entries.praise || []).filter(e => e.done);
 
-      const showMore = () => setShown(s => Math.min(s + 3, boardEntries.length));
-      const visible = boardEntries.slice(0, shown);
-      const remaining = boardEntries.length - visible.length;
-
-      return (
-        <div style={{ padding: "5vw", paddingBottom: 100, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: PSALM_COLOR, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>← Back</button>
-
-          <div style={{ background: "#FFFFFF", borderRadius: 16, padding: "22px", marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: PSALM_COLOR, textTransform: "uppercase", marginBottom: 6 }}>{psalmType.keyPsalm}</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 6 }}>{psalmType.name}</div>
-            <div style={{ fontSize: 13, color: "#8A93A8", fontStyle: "italic", marginBottom: 16 }}>{psalmType.tag}</div>
-            <div style={{ background: PSALM_COLOR + "15", borderLeft: `3px solid ${PSALM_COLOR}`, borderRadius: "0 8px 8px 0", padding: "12px 14px" }}>
-              <div style={{ fontSize: 12, color: PSALM_COLOR, fontWeight: 600, marginBottom: 4 }}>{verse.ref}</div>
-              <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.65, fontStyle: "italic" }}>"{verse.text}"</div>
+      const steps = [
+        {
+          title: psalmType.name,
+          subtitle: psalmType.tag,
+          color: PSALM_COLOR,
+          scripture: verse,
+          note: psalmType.teaching.split("\n\n")[0],
+          entries: active,
+          shownKey: psalmType.id,
+          extra: psalmType.id === "thanksgiving" && answered.length > 0 ? (
+            <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 10 }}>Answered prayers</div>
+              {answered.slice(0, 3).map(e => (
+                <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4A9E7F", flexShrink: 0, marginTop: 6 }} />
+                  <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.6 }}>{e.text}</div>
+                </div>
+              ))}
             </div>
-          </div>
+          ) : null,
+        },
+        {
+          title: "Practice",
+          subtitle: psalmType.keyPsalm,
+          color: PSALM_COLOR,
+          note: psalmType.practice,
+          entries: [],
+        },
+      ];
 
-          {/* Board entries */}
-          <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "18px 20px", marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 14 }}>
-              {psalmType.id === "lament" ? "What you're bringing to God" :
-               psalmType.id === "penitence" ? "What needs confession" :
-               psalmType.id === "trust" ? "Who you're standing in faith for" :
-               psalmType.id === "thanksgiving" ? "What you're grateful for" : "From your board"}
-            </div>
-            {visible.length === 0 ? (
-              <div style={{ fontSize: 13, color: "#8A93A8", fontStyle: "italic" }}>Nothing added yet — head to your board to add some.</div>
-            ) : (
-              <>
-                {visible.map(e => (
-                  <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: PSALM_COLOR, flexShrink: 0, marginTop: 6 }} />
-                    <div style={{ fontSize: 14, color: "#2C3347", lineHeight: 1.6 }}>
-                      {e.name ? <strong>{e.name}</strong> : null}{e.name ? " — " : ""}{e.text}
-                    </div>
-                  </div>
-                ))}
-                {remaining > 0 && (
-                  <button onClick={showMore} style={{ background: "none", border: `1px solid ${PSALM_COLOR}`, borderRadius: 20, padding: "6px 16px", fontSize: 12, color: PSALM_COLOR, cursor: "pointer", fontWeight: 600, marginTop: 4 }}>
-                    + {Math.min(remaining, 3)} more
-                  </button>
-                )}
-              </>
-            )}
-            {psalmType.id === "thanksgiving" && answeredEntries.length > 0 && (
-              <>
-                <div style={{ height: 1, background: "#DDE3F0", margin: "14px 0" }} />
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 10 }}>Answered prayers</div>
-                {answeredEntries.slice(0, 3).map(e => (
-                  <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4A9E7F", flexShrink: 0, marginTop: 6 }} />
-                    <div style={{ fontSize: 14, color: "#2C3347", lineHeight: 1.6 }}>{e.text}</div>
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
-
-          <PracticeTimer practiceText={psalmType.practice} />
-          <button onClick={onClose} style={{ background: PSALM_COLOR, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "16px 24px", fontSize: 15, fontWeight: 600, cursor: "pointer", width: "100%", marginTop: 16 }}>
-            Amen
-          </button>
-        </div>
-      );
+      return <StepPrayerShell title={psalmType.name} steps={steps} onClose={onClose} accentColor={PSALM_COLOR} />;
     }
 
-    // ── Psalms Full Walk-Through ──────────────────────────────────────────────
     function PsalmsFullPrayerScreen({ entries, onClose }) {
       const verses = React.useState(() =>
         PSALM_TYPES.reduce((acc, t) => {
@@ -1423,92 +1446,33 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         }, {})
       )[0];
 
-      const [shown, setShown] = React.useState(
-        PSALM_TYPES.reduce((acc, t) => { acc[t.id] = 3; return acc; }, {})
-      );
-      const showMore = (key, total) => setShown(s => ({ ...s, [key]: Math.min(s[key] + 3, total) }));
       const active = (key) => (entries[key] || []).filter(e => !e.done);
       const answered = (entries.praise || []).filter(e => e.done);
+      const typeColors = { praise: "#4A9E7F", lament: "#5B8DD9", penitence: "#9E6B8A", trust: "#B87333", thanksgiving: "#3D7EB0" };
 
-      const EntryList = ({ sectionKey, color, typeId }) => {
-        const items = active(sectionKey);
-        if (items.length === 0) return (
-          <div style={{ fontSize: 13, color: "#8A93A8", fontStyle: "italic", padding: "6px 0" }}>Nothing added yet.</div>
-        );
-        const visible = items.slice(0, shown[typeId]);
-        const remaining = items.length - visible.length;
-        return (
-          <div>
-            {visible.map(e => (
-              <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0, marginTop: 6 }} />
-                <div style={{ fontSize: 14, color: "#2C3347", lineHeight: 1.6 }}>
-                  {e.name ? <strong>{e.name}</strong> : null}{e.name ? " — " : ""}{e.text}
-                </div>
+      const steps = PSALM_TYPES.map(type => ({
+        title: type.name,
+        subtitle: type.tag,
+        color: typeColors[type.id],
+        scripture: verses[type.id],
+        entries: active(type.boardKey),
+        shownKey: type.id,
+        extra: type.id === "thanksgiving" && answered.length > 0 ? (
+          <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 10 }}>Answered prayers</div>
+            {answered.slice(0, 3).map(e => (
+              <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4A9E7F", flexShrink: 0, marginTop: 6 }} />
+                <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.6 }}>{e.text}</div>
               </div>
             ))}
-            {remaining > 0 && (
-              <button onClick={() => showMore(typeId, items.length)}
-                style={{ background: "none", border: `1px solid ${color}`, borderRadius: 20, padding: "6px 16px", fontSize: 12, color: color, cursor: "pointer", fontWeight: 600, marginTop: 4 }}>
-                + {Math.min(remaining, 3)} more
-              </button>
-            )}
           </div>
-        );
-      };
+        ) : null,
+      }));
 
-      const sectionColors = { praise: "#4A9E7F", lament: "#5B8DD9", penitence: "#9E6B8A", trust: "#B87333", thanksgiving: "#3D7EB0" };
-
-      return (
-        <div style={{ padding: "5vw", paddingBottom: 100, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: PSALM_COLOR, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>← Back</button>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4 }}>Guided Prayer</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 6 }}>Praying the Psalms</div>
-          <div style={{ fontSize: 13, color: "#8A93A8", marginBottom: 28, lineHeight: 1.6 }}>Walk through all five postures. Move at your own pace.</div>
-
-          {PSALM_TYPES.map(type => {
-            const color = sectionColors[type.id];
-            const v = verses[type.id];
-            return (
-              <div key={type.id} style={{ background: "#FFFFFF", borderRadius: 16, padding: "20px", marginBottom: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: color + "20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontSize: 14, color: color }}>{type.icon}</span>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#1A1F2E" }}>{type.name}</div>
-                    <div style={{ fontSize: 11, color: "#8A93A8" }}>{type.keyPsalm}</div>
-                  </div>
-                </div>
-                <div style={{ background: color + "12", borderLeft: `3px solid ${color}`, borderRadius: "0 8px 8px 0", padding: "10px 12px", marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, color: color, fontWeight: 600, marginBottom: 3 }}>{v.ref}</div>
-                  <div style={{ fontSize: 12, color: "#2C3347", lineHeight: 1.6, fontStyle: "italic" }}>"{v.text}"</div>
-                </div>
-                <EntryList sectionKey={type.boardKey} color={color} typeId={type.id} />
-                {type.id === "thanksgiving" && answered.length > 0 && (
-                  <>
-                    <div style={{ height: 1, background: "#DDE3F0", margin: "10px 0" }} />
-                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 8 }}>Answered</div>
-                    {answered.slice(0, 3).map(e => (
-                      <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4A9E7F", flexShrink: 0, marginTop: 6 }} />
-                        <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.6 }}>{e.text}</div>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            );
-          })}
-
-          <button onClick={onClose} style={{ background: PSALM_COLOR, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "16px 24px", fontSize: 15, fontWeight: 600, cursor: "pointer", width: "100%", marginTop: 8 }}>
-            Amen
-          </button>
-        </div>
-      );
+      return <StepPrayerShell title="Praying the Psalms" steps={steps} onClose={onClose} accentColor="#3D7EB0" />;
     }
 
-    // ── Psalms Model Screen ───────────────────────────────────────────────────
     function PsalmsModelScreen({ entries, onClose }) {
       const [selectedType, setSelectedType] = React.useState(null);
       const [showFullPrayer, setShowFullPrayer] = React.useState(false);
