@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Groundwork</title>
   <!-- Firebase CDN -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -14,10 +14,19 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #EEF1F8; font-family: -apple-system, 'Inter', sans-serif; }
-    button { font-family: inherit; }
-    textarea, input { font-family: inherit; }
+    html, body, #root { width: 100%; min-height: 100%; }
+    body {
+      background: #EEF1F8;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-text-size-adjust: 100%;
+      overflow-x: hidden;
+    }
+    button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
+    textarea, input { font-family: inherit; -webkit-appearance: none; border-radius: 0; }
     ::-webkit-scrollbar { width: 0; }
+    input[type="time"] { -webkit-appearance: none; }
+    * { -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
 <body>
@@ -942,7 +951,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       );
 
       return (
-        <div style={{ padding: "24px", paddingBottom: 100 }}>
+        <div style={{ padding: "5vw", paddingBottom: 100, maxWidth: 600, margin: "0 auto", width: "100%" }}>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: "#6B5FD6", cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>
             ← Back
           </button>
@@ -1091,7 +1100,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       );
 
       return (
-        <div style={{ padding: "24px", paddingBottom: 100 }}>
+        <div style={{ padding: "5vw", paddingBottom: 100, maxWidth: 600, margin: "0 auto", width: "100%" }}>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: tabAccent, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>← Back</button>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4 }}>Guided Prayer</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 6 }}>The Tabernacle Prayer</div>
@@ -1230,7 +1239,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       // Office detail view
       if (selected) {
         return (
-          <div style={{ padding: "24px", paddingBottom: 100 }}>
+          <div style={{ padding: "5vw", paddingBottom: 100, maxWidth: 600, margin: "0 auto", width: "100%" }}>
             <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", fontSize: 13, color: selected.color, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>← Back</button>
 
             <div style={{ background: selected.id === "night" ? "#2D2A5E" : "#FFFFFF", borderRadius: 16, padding: "22px", marginBottom: 16 }}>
@@ -1286,7 +1295,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       // Office overview
       return (
-        <div style={{ padding: "24px", paddingBottom: 80 }}>
+        <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: "#6B5FD6", cursor: "pointer", padding: "0 0 4px 0", fontWeight: 500 }}>← Back to models</button>
 
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4, marginTop: 16 }}>Model 3</div>
@@ -1342,7 +1351,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const remaining = boardEntries.length - visible.length;
 
       return (
-        <div style={{ padding: "24px", paddingBottom: 100 }}>
+        <div style={{ padding: "5vw", paddingBottom: 100, maxWidth: 600, margin: "0 auto", width: "100%" }}>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: PSALM_COLOR, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>← Back</button>
 
           <div style={{ background: "#FFFFFF", borderRadius: 16, padding: "22px", marginBottom: 16 }}>
@@ -1451,7 +1460,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const sectionColors = { praise: "#4A9E7F", lament: "#5B8DD9", penitence: "#9E6B8A", trust: "#B87333", thanksgiving: "#3D7EB0" };
 
       return (
-        <div style={{ padding: "24px", paddingBottom: 100 }}>
+        <div style={{ padding: "5vw", paddingBottom: 100, maxWidth: 600, margin: "0 auto", width: "100%" }}>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: PSALM_COLOR, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>← Back</button>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4 }}>Guided Prayer</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 6 }}>Praying the Psalms</div>
@@ -1510,7 +1519,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const typeColors = { praise: "#4A9E7F", lament: "#5B8DD9", penitence: "#9E6B8A", trust: "#B87333", thanksgiving: "#3D7EB0" };
 
       return (
-        <div style={{ padding: "24px", paddingBottom: 80 }}>
+        <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: PSALM_COLOR, cursor: "pointer", padding: "0 0 4px 0", fontWeight: 500 }}>← Back to models</button>
 
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4, marginTop: 16 }}>Model 4</div>
@@ -1579,7 +1588,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       };
 
       return (
-        <div style={{ minHeight: "100vh", background: "#2D2A5E", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", maxWidth: 430, margin: "0 auto" }}>
+        <div style={{ minHeight: "100vh", background: "#2D2A5E", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", width: "100%" }}>
           <div style={{ width: 64, height: 64, borderRadius: 18, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
             <span style={{ fontSize: 28 }}>🙏</span>
           </div>
@@ -1766,7 +1775,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           const seg = currentSegs.find(s => s.id === selected);
           if (!seg) return null;
           return (
-            <div style={{ padding: "24px", paddingBottom: 80 }}>
+            <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
               <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", fontSize: 13, color: accentColor, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>
                 ← Back
               </button>
@@ -1793,7 +1802,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
         // Model overview — Lords Prayer
         if (!isTabernacle) return (
-          <div style={{ padding: "24px", paddingBottom: 80 }}>
+          <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
             {/* Model switcher */}
             <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
               <div onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.accent, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.accent}` }}>
@@ -1867,7 +1876,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         // Model overview — Tabernacle Prayer
         const tabAccent = "#B87333";
         return (
-          <div style={{ padding: "24px", paddingBottom: 80 }}>
+          <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
             {/* Model switcher */}
             <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
               <div onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
@@ -1951,7 +1960,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           const active = sectionEntries.filter(e => !e.done);
           const done = sectionEntries.filter(e => e.done);
           return (
-            <div style={{ padding: "24px", paddingBottom: 80 }}>
+            <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
               <button onClick={() => { setActiveSection(null); setShowAdd(false); }} style={{ background: "none", border: "none", fontSize: 13, color: C.accent, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>
                 ← Back
               </button>
@@ -2009,7 +2018,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
         // Section overview
         return (
-          <div style={{ padding: "24px", paddingBottom: 80 }}>
+          <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase" }}>Prayer Board</div>
               <button onClick={() => setShowPrayer(true)} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 20, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", letterSpacing: "0.04em" }}>
@@ -2040,7 +2049,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       // ── Fast Tab ──
       const renderFast = () => (
-        <div style={{ padding: "24px", paddingBottom: 80 }}>
+        <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 16 }}>Fasting</div>
 
           {!fastActive ? (
@@ -2194,7 +2203,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         const ready = schedule.freq && (schedule.freq !== "custom" || schedule.customDays.length > 0);
 
         return (
-          <div style={{ padding: "24px", paddingBottom: 80 }}>
+          <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 6 }}>Schedule</div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 24, lineHeight: 1.6 }}>
               Consistency and practice bring prayer to life. Block your time and protect it.
@@ -2285,10 +2294,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       // ── Homepage ─────────────────────────────────────────────────────────────
       const renderHome = () => (
-        <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
+        <div style={{ minHeight: "100vh", width: "100%", background: C.bg, display: "flex", flexDirection: "column" }}>
 
           {/* Hero */}
-          <div style={{ background: C.dark, padding: "64px 28px 40px", position: "relative", overflow: "hidden" }}>
+          <div style={{ background: C.dark, padding: "64px 5vw 40px", position: "relative", overflow: "hidden" }}>
             <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, borderRadius: "50%", background: "rgba(107,95,214,0.15)" }} />
             <div style={{ position: "absolute", bottom: -20, left: -20, width: 120, height: 120, borderRadius: "50%", background: "rgba(74,158,127,0.12)" }} />
             <div style={{ position: "relative", zIndex: 1 }}>
@@ -2302,7 +2311,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             </div>
           </div>
 
-          <div style={{ padding: "32px 24px", flex: 1 }}>
+          <div style={{ padding: "5vw", flex: 1, maxWidth: 600, margin: "0 auto", width: "100%", alignSelf: "stretch" }}>
 
             {/* What prayer is */}
             <div style={{ background: C.white, borderRadius: 16, padding: "22px", marginBottom: 16 }}>
@@ -2403,9 +2412,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const headerTitle = { learn: "The Lord's Prayer", board: "Prayer Board", fast: "Fasting" };
 
       return (
-        <div style={{ fontFamily: "-apple-system, 'Inter', sans-serif", background: C.bg, minHeight: "100vh", maxWidth: 430, margin: "0 auto", color: C.ink }}>
+        <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", background: C.bg, minHeight: "100vh", width: "100%", color: C.ink }}>
           {/* Header */}
-          <div style={{ padding: "52px 24px 20px", borderBottom: `1px solid ${C.paper}`, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div style={{ padding: "52px 5vw 20px", borderBottom: `1px solid ${C.paper}`, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: C.stone, textTransform: "uppercase", marginBottom: 4 }}>Groundwork</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: "-0.02em" }}>
