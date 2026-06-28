@@ -936,13 +936,29 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
     }
 
     // ── Shared: Step Prayer Shell ─────────────────────────────────────────────
-    function StepPrayerShell({ title, subtitle, steps, onClose, accentColor }) {
+    function StepPrayerShell({ title, subtitle, steps, onClose, accentColor, intercessionEntries }) {
       const [step, setStep]           = React.useState(0);
       const [countdown, setCountdown] = React.useState(15);
       const [unlocked, setUnlocked]   = React.useState(false);
       const [shown, setShown]         = React.useState({});
+      const [showNotify, setShowNotify] = React.useState(false);
+      const [emails, setEmails]       = React.useState({});
+      const [messages, setMessages]   = React.useState({});
+      const [sent, setSent]           = React.useState({});
       const timerRef                  = React.useRef(null);
       const isLast = step === steps.length - 1;
+      const notifiableEntries = (intercessionEntries || []).filter(e => !e.done);
+
+      // Build default messages once
+      React.useEffect(() => {
+        if (notifiableEntries.length > 0) {
+          const defaults = {};
+          notifiableEntries.forEach(e => {
+            defaults[e.id] = `Hey ${e.name || "friend"} — I want you to know I prayed for you today. You are not forgotten. I'm standing with you in this and believing God is at work in your situation. You are loved.`;
+          });
+          setMessages(defaults);
+        }
+      }, []);
 
       // Reset countdown each time step changes
       React.useEffect(() => {
@@ -964,8 +980,84 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       const showMore = (key, total) => setShown(s => ({ ...s, [key]: Math.min((s[key] || 3) + 3, total) }));
 
+      const handleAmen = () => {
+        if (notifiableEntries.length > 0) {
+          setShowNotify(true);
+        } else {
+          onClose();
+        }
+      };
+
+      const sendEmail = (e) => {
+        const email = emails[e.id];
+        if (!email) return;
+        const subject = encodeURIComponent("I prayed for you today");
+        const body = encodeURIComponent(messages[e.id] || "");
+        window.open(`mailto:${email}?subject=${subject}&body=${body}`, "_blank");
+        setSent(prev => ({ ...prev, [e.id]: true }));
+      };
+
       const current = steps[step];
       const color = current.color || accentColor || "#6B5FD6";
+
+      // Notify screen
+      if (showNotify) return (
+        <div style={{ minHeight: "100vh", background: "#EEF1F8", display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "52px 5vw 20px", borderBottom: "1px solid #DDE3F0", background: "#EEF1F8" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4 }}>You prayed for these people</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em" }}>Want to let them know?</div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 5vw", maxWidth: 600, margin: "0 auto", width: "100%" }}>
+            <div style={{ fontSize: 13, color: "#8A93A8", lineHeight: 1.6, marginBottom: 24 }}>
+              Add their email and customize the message. Tapping "Send" opens your email app — you can review it before it goes.
+            </div>
+            {notifiableEntries.map(e => (
+              <div key={e.id} style={{ background: "#FFFFFF", borderRadius: 16, padding: "20px", marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  {sent[e.id]
+                    ? <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#4A9E7F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span style={{ color: "#FFF", fontSize: 14, fontWeight: 700 }}>✓</span></div>
+                    : <div style={{ width: 32, height: 32, borderRadius: "50%", background: accentColor + "20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span style={{ fontSize: 14 }}>🙏</span></div>
+                  }
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#1A1F2E" }}>{e.name || "Someone"}</div>
+                    <div style={{ fontSize: 12, color: "#8A93A8" }}>{e.text}</div>
+                  </div>
+                </div>
+                {!sent[e.id] && (
+                  <>
+                    <input
+                      type="email"
+                      placeholder="Their email address"
+                      value={emails[e.id] || ""}
+                      onChange={ev => setEmails(prev => ({ ...prev, [e.id]: ev.target.value }))}
+                      style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #DDE3F0", background: "#EEF1F8", fontSize: 14, color: "#1A1F2E", marginBottom: 10, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
+                    />
+                    <textarea
+                      value={messages[e.id] || ""}
+                      onChange={ev => setMessages(prev => ({ ...prev, [e.id]: ev.target.value }))}
+                      style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #DDE3F0", background: "#EEF1F8", fontSize: 13, color: "#1A1F2E", marginBottom: 12, boxSizing: "border-box", outline: "none", fontFamily: "inherit", lineHeight: 1.65, resize: "none", minHeight: 100 }}
+                    />
+                    <button onClick={() => sendEmail(e)}
+                      disabled={!emails[e.id]}
+                      style={{ background: emails[e.id] ? accentColor : "#DDE3F0", color: emails[e.id] ? "#FFFFFF" : "#8A93A8", border: "none", borderRadius: 10, padding: "12px 18px", fontSize: 13, fontWeight: 600, cursor: emails[e.id] ? "pointer" : "not-allowed", width: "100%", transition: "all 0.2s" }}>
+                      Send email →
+                    </button>
+                  </>
+                )}
+                {sent[e.id] && (
+                  <div style={{ fontSize: 13, color: "#4A9E7F", fontWeight: 500, textAlign: "center" }}>Email sent ✓</div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: "16px 5vw 32px", background: "#EEF1F8", borderTop: "1px solid #DDE3F0" }}>
+            <button onClick={onClose}
+              style={{ background: accentColor, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
+              Done
+            </button>
+          </div>
+        </div>
+      );
 
       // Progress dots
       const Dots = () => (
@@ -1049,7 +1141,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 </div>
               )}
 
-              {/* Extra content (dark card for doxology etc) */}
+              {/* Extra content */}
               {current.extra && current.extra}
             </div>
           </div>
@@ -1057,7 +1149,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           {/* Fixed footer — countdown + next */}
           <div style={{ padding: "16px 5vw 32px", background: "#EEF1F8", borderTop: "1px solid #DDE3F0" }}>
             {isLast ? (
-              <button onClick={onClose}
+              <button onClick={handleAmen}
                 style={{ background: color, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
                 Amen
               </button>
@@ -1121,7 +1213,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         if (s.extraKey === "doxology") return { ...s, extra: renderDoxologyExtra() };
         return s;
       });
-      return <StepPrayerShell title="The Lord's Prayer" steps={resolvedSteps} onClose={onClose} accentColor="#6B5FD6" />;
+      return <StepPrayerShell title="The Lord's Prayer" steps={resolvedSteps} onClose={onClose} accentColor="#6B5FD6" intercessionEntries={entries.intercession || []} />;
     }
 
 
@@ -1149,7 +1241,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         { title: "The Holy of Holies", subtitle: "Pure presence — beyond the veil", color: "#6B5FD6", scripture: presenceVerse[0], note: "You've arrived. Stop asking. Stop declaring. Just be still in His presence. The veil was torn. You have access. Stay here as long as you can.", entries: [], extra: renderHolyExtra() },
       ];
 
-      return <StepPrayerShell title="The Tabernacle Prayer" steps={steps} onClose={onClose} accentColor={tabAccent} />;
+      return <StepPrayerShell title="The Tabernacle Prayer" steps={steps} onClose={onClose} accentColor={tabAccent} intercessionEntries={entries.intercession || []} />;
     }
 
     function DailyOfficeScreen({ onClose }) {
@@ -1247,7 +1339,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               <div style={{ fontSize: 13, color: "#8A93A8", marginBottom: 14, lineHeight: 1.6 }}>
                 Add {selected.name} to your calendar as a daily recurring event at {selected.time}. Marked busy so your time stays protected.
               </div>
-              <button onClick={() => generateOfficeICS(selected)}
+              <button onClick={() => { onClose(selected.name); }} style={{ background: selected.color, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "13px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
+              Mark as prayed
+            </button>
+            <button onClick={() => generateOfficeICS(selected)}
                 style={{ background: selected.color, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "13px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
                 ↓ Download .ics file
               </button>
@@ -1333,7 +1428,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         { title: "Practice", subtitle: psalmType.keyPsalm, color: PSALM_COLOR, note: psalmType.practice, entries: [] },
       ];
 
-      return <StepPrayerShell title={psalmType.name} steps={steps} onClose={onClose} accentColor={PSALM_COLOR} />;
+      return <StepPrayerShell title={psalmType.name} steps={steps} onClose={onClose} accentColor={PSALM_COLOR} intercessionEntries={entries.intercession || []} />;
     }
 
     function PsalmsFullPrayerScreen({ entries, onClose }) {
@@ -1374,15 +1469,15 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         extra: type.id === "thanksgiving" ? renderAnsweredExtra() : null,
       }));
 
-      return <StepPrayerShell title="Praying the Psalms" steps={steps} onClose={onClose} accentColor="#3D7EB0" />;
+      return <StepPrayerShell title="Praying the Psalms" steps={steps} onClose={onClose} accentColor="#3D7EB0" intercessionEntries={entries.intercession || []} />;
     }
 
     function PsalmsModelScreen({ entries, onClose }) {
       const [selectedType, setSelectedType] = React.useState(null);
       const [showFullPrayer, setShowFullPrayer] = React.useState(false);
 
-      if (showFullPrayer) return <PsalmsFullPrayerScreen entries={entries} onClose={() => setShowFullPrayer(false)} />;
-      if (selectedType) return <PsalmTypePrayerScreen psalmType={selectedType} entries={entries} onClose={() => setSelectedType(null)} />;
+      if (showFullPrayer) return <PsalmsFullPrayerScreen entries={entries} onClose={() => { onClose("Praying the Psalms — Full"); setShowFullPrayer(false); }} />;
+      if (selectedType) return <PsalmTypePrayerScreen psalmType={selectedType} entries={entries} onClose={() => { onClose(selectedType.name); setSelectedType(null); }} />;
 
       const typeColors = { praise: "#4A9E7F", lament: "#5B8DD9", penitence: "#9E6B8A", trust: "#B87333", thanksgiving: "#3D7EB0" };
 
@@ -1495,6 +1590,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [tab, setTab]                   = useState("learn");
       const [showHome, setShowHome]         = useState(true);
       const [showSettings, setShowSettings] = useState(false);
+      const [prayerLog, setPrayerLog]         = useState([]);
       const [showPrayer, setShowPrayer]     = useState(false);
       const [showTabPrayer, setShowTabPrayer] = useState(false);
       const [showDailyOffice, setShowDailyOffice] = useState(false);
@@ -1535,6 +1631,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             if (data.segments)    setSegments(data.segments);
             if (data.tabSegments) setTabSegments(data.tabSegments);
             if (data.schedule)    setSchedule(data.schedule);
+            if (data.prayerLog)   setPrayerLog(data.prayerLog);
           }
           setDataLoading(false);
         }).catch(() => setDataLoading(false));
@@ -1545,7 +1642,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         if (!user || dataLoading) return;
         const ref = db.collection("users").doc(user.uid);
         const timer = setTimeout(() => {
-          ref.set({ entries, segments, tabSegments, schedule }, { merge: true });
+          ref.set({ entries, segments, tabSegments, schedule, prayerLog }, { merge: true });
         }, 1000);
         return () => clearTimeout(timer);
       }, [entries, segments, tabSegments, schedule, user]);
@@ -1553,6 +1650,17 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const signOut = () => auth.signOut();
 
       const completed = segments.filter(s => s.complete).length;
+
+      const logPrayer = (modelName) => {
+        const entry = { id: Date.now(), model: modelName, date: new Date().toISOString() };
+        setPrayerLog(prev => {
+          const updated = [entry, ...prev].slice(0, 90); // keep 90 days
+          if (user) {
+            db.collection("users").doc(user.uid).set({ prayerLog: updated }, { merge: true });
+          }
+          return updated;
+        });
+      };
 
       // ── Show login if not signed in ──
       if (authLoading) return (
@@ -2156,6 +2264,78 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 </div>
               </div>
             )}
+          {/* Prayer History */}
+          <div style={{ marginTop: 32 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 16 }}>Prayer history</div>
+            {(() => {
+              // Streak calculation
+              const today = new Date().toDateString();
+              const yesterday = new Date(Date.now() - 86400000).toDateString();
+              const logDates = [...new Set(prayerLog.map(e => new Date(e.date).toDateString()))];
+              let streak = 0;
+              let checkDate = new Date();
+              while (logDates.includes(checkDate.toDateString())) {
+                streak++;
+                checkDate = new Date(checkDate.getTime() - 86400000);
+              }
+              const prayedToday = logDates.includes(today);
+              const todayLog = prayerLog.filter(e => new Date(e.date).toDateString() === today);
+
+              return (
+                <div>
+                  {/* Streak + today status */}
+                  <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+                    <div style={{ flex: 1, background: prayedToday ? C.accent : C.white, borderRadius: 12, padding: "16px", textAlign: "center" }}>
+                      <div style={{ fontSize: 28, fontWeight: 800, color: prayedToday ? C.white : C.ink, letterSpacing: "-0.03em" }}>{streak}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: prayedToday ? "rgba(255,255,255,0.7)" : C.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 2 }}>Day streak</div>
+                    </div>
+                    <div style={{ flex: 1, background: prayedToday ? "#EEF8F4" : C.white, borderRadius: 12, padding: "16px", textAlign: "center", border: prayedToday ? `1px solid ${C.sage}` : `1px solid ${C.paper}` }}>
+                      <div style={{ fontSize: 22, marginBottom: 4 }}>{prayedToday ? "✓" : "○"}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: prayedToday ? C.sage : C.stone, textTransform: "uppercase", letterSpacing: "0.08em" }}>{prayedToday ? "Prayed today" : "Not yet today"}</div>
+                    </div>
+                  </div>
+
+                  {/* Today's sessions */}
+                  {todayLog.length > 0 && (
+                    <div style={{ background: C.white, borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: C.stone, textTransform: "uppercase", marginBottom: 10 }}>Today</div>
+                      {todayLog.map(e => (
+                        <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                          <div style={{ fontSize: 14, color: C.ink, fontWeight: 500 }}>{e.model}</div>
+                          <div style={{ fontSize: 12, color: C.stone }}>{new Date(e.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Recent history */}
+                  {prayerLog.length > 0 ? (
+                    <div style={{ background: C.white, borderRadius: 12, padding: "14px 16px" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: C.stone, textTransform: "uppercase", marginBottom: 10 }}>Recent</div>
+                      {prayerLog.slice(0, 10).map(e => {
+                        const d = new Date(e.date);
+                        const dateStr = d.toDateString() === today ? "Today" : d.toDateString() === yesterday ? "Yesterday" : d.toLocaleDateString([], { month: "short", day: "numeric" });
+                        return (
+                          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 10, marginBottom: 10, borderBottom: `1px solid ${C.paper}` }}>
+                            <div>
+                              <div style={{ fontSize: 13, color: C.ink, fontWeight: 500, marginBottom: 2 }}>{e.model}</div>
+                              <div style={{ fontSize: 11, color: C.stone }}>{dateStr} · {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+                            </div>
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.accent, flexShrink: 0 }} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ background: C.white, borderRadius: 12, padding: "20px", textAlign: "center" }}>
+                      <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6 }}>No prayer sessions recorded yet. Tap "Pray this model" on any model to get started.</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
           </div>
         );
       };
@@ -2310,13 +2490,13 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           </nav>
 
           {showHome ? renderHome() : showSettings ? renderSettings() : showPsalms ? (
-            <PsalmsModelScreen entries={entries} onClose={() => setShowPsalms(false)} />
+            <PsalmsModelScreen entries={entries} onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowPsalms(false); }} />
           ) : showDailyOffice ? (
-            <DailyOfficeScreen onClose={() => setShowDailyOffice(false)} />
+            <DailyOfficeScreen onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowDailyOffice(false); }} />
           ) : showTabPrayer ? (
-            <TabernaclePrayerScreen entries={entries} onClose={() => setShowTabPrayer(false)} />
+            <TabernaclePrayerScreen entries={entries} onClose={() => { logPrayer("The Tabernacle Prayer"); setShowTabPrayer(false); }} />
           ) : showPrayer ? (
-            <GuidedPrayerScreen entries={entries} onClose={() => setShowPrayer(false)} />
+            <GuidedPrayerScreen entries={entries} onClose={() => { logPrayer("The Lord's Prayer"); setShowPrayer(false); }} />
           ) : (
             <>
               {tab === "learn" && renderLearn()}
