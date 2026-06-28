@@ -58,16 +58,39 @@
     const googleProvider = new firebase.auth.GoogleAuthProvider();
     // ─────────────────────────────────────────────────────────────────────────
 
-    const C = {
-      ink:      "#1A1F2E",
-      bg:       "#EEF1F8",
-      paper:    "#DDE3F0",
-      accent:   "#6B5FD6",
-      sage:     "#4A9E7F",
-      stone:    "#8A93A8",
-      white:    "#FFFFFF",
-      dark:     "#2D2A5E",
-      body:     "#2C3347",
+    const THEMES = {
+      light: {
+        ink:    "#1A1F2E",
+        bg:     "#EEF1F8",
+        paper:  "#DDE3F0",
+        accent: "#6B5FD6",
+        sage:   "#4A9E7F",
+        stone:  "#8A93A8",
+        white:  "#FFFFFF",
+        dark:   "#2D2A5E",
+        body:   "#2C3347",
+        card:   "#FFFFFF",
+        input:  "#FFFFFF",
+        inputBorder: "#DDE3F0",
+        inputText: "#1A1F2E",
+        navBg:  "#EEF1F8",
+      },
+      dark: {
+        ink:    "#F0F2F8",
+        bg:     "#0F1117",
+        paper:  "#2A2D3A",
+        accent: "#7C6FE8",
+        sage:   "#5BB891",
+        stone:  "#6B7280",
+        white:  "#1C1F2A",
+        dark:   "#0A0C14",
+        body:   "#C8CEDD",
+        card:   "#1C1F2A",
+        input:  "#252836",
+        inputBorder: "#2A2D3A",
+        inputText: "#F0F2F8",
+        navBg:  "#0F1117",
+      },
     };
 
     const SEGMENTS = [
@@ -631,6 +654,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       { id: "intercession", label: "Intercession",  prompt: "God, I pray for other people...",          color: "#B87333", hint: "Who needs you to stand in the gap for them?" },
       { id: "confession",   label: "Confession",    prompt: "God, here is where I messed up...",        color: "#9E6B8A", hint: "Be specific. Specificity is the practice." },
       { id: "forgiveness",  label: "Forgiveness",   prompt: "God, I choose to forgive...",              color: "#C0724A", hint: "Who do you need to release? Name them." },
+      { id: "testimonies",  label: "Testimonies",   prompt: "God, I remember what you did...",          color: "#4A9E7F", hint: "Record what God has done — big or small." },
     ];
 
     const INITIAL_ENTRIES = {
@@ -644,6 +668,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       ],
       confession:   [{ id: 7, text: "Was short with my family this morning", date: "Jun 19", done: false }],
       forgiveness:  [{ id: 8, name: "A coworker", text: "Said something that hurt me last week", date: "Jun 18", done: false }],
+      testimonies:  [],
     };
 
     // ── Kingdom Come Scripture Database ──────────────────────────────────────
@@ -936,7 +961,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
     }
 
     // ── Shared: Step Prayer Shell ─────────────────────────────────────────────
-    function StepPrayerShell({ title, subtitle, steps, onClose, accentColor, intercessionEntries }) {
+    function StepPrayerShell({ title, subtitle, steps, onClose, accentColor, intercessionEntries, isDark }) {
       const [step, setStep]           = React.useState(0);
       const [countdown, setCountdown] = React.useState(15);
       const [unlocked, setUnlocked]   = React.useState(false);
@@ -945,9 +970,40 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [emails, setEmails]       = React.useState({});
       const [messages, setMessages]   = React.useState({});
       const [sent, setSent]           = React.useState({});
+      const [musicOn, setMusicOn]     = React.useState(false);
       const timerRef                  = React.useRef(null);
+      const audioRef                  = React.useRef(null);
       const isLast = step === steps.length - 1;
       const notifiableEntries = (intercessionEntries || []).filter(e => !e.done);
+
+      // Set up audio
+      React.useEffect(() => {
+        audioRef.current = new Audio(MUSIC_URL);
+        audioRef.current.loop = true;
+        audioRef.current.volume = 0.3;
+        return () => {
+          audioRef.current.pause();
+          audioRef.current = null;
+        };
+      }, []);
+
+      const toggleMusic = () => {
+        if (!audioRef.current) return;
+        if (musicOn) {
+          audioRef.current.pause();
+          setMusicOn(false);
+        } else {
+          audioRef.current.play().catch(() => {});
+          setMusicOn(true);
+        }
+      };
+
+      // Stop music when Amen / notify screen opens
+      const handleAmenWithMusic = () => {
+        if (audioRef.current) audioRef.current.pause();
+        setMusicOn(false);
+        handleAmen();
+      };
 
       // Build default messages once
       React.useEffect(() => {
@@ -1001,26 +1057,34 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const color = current.color || accentColor || "#6B5FD6";
 
       // Notify screen
+      const shellBg = isDark ? "#0F1117" : "#EEF1F8";
+      const shellCard = isDark ? "#1C1F2A" : "#FFFFFF";
+      const shellBorder = isDark ? "#2A2D3A" : "#DDE3F0";
+      const shellText = isDark ? "#F0F2F8" : "#1A1F2E";
+      const shellSubtext = isDark ? "#6B7280" : "#8A93A8";
+      const shellBody = isDark ? "#C8CEDD" : "#2C3347";
+      const shellInput = isDark ? "#252836" : "#EEF1F8";
+
       if (showNotify) return (
-        <div style={{ minHeight: "100vh", background: "#EEF1F8", display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "52px 5vw 20px", borderBottom: "1px solid #DDE3F0", background: "#EEF1F8" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4 }}>You prayed for these people</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em" }}>Want to let them know?</div>
+        <div style={{ minHeight: "100vh", background: shellBg, display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "52px 5vw 20px", borderBottom: "1px solid " + shellBorder, background: shellBg }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: shellSubtext, textTransform: "uppercase", marginBottom: 4 }}>You prayed for these people</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: shellText, letterSpacing: "-0.02em" }}>Want to let them know?</div>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "24px 5vw", maxWidth: 600, margin: "0 auto", width: "100%" }}>
-            <div style={{ fontSize: 13, color: "#8A93A8", lineHeight: 1.6, marginBottom: 24 }}>
+            <div style={{ fontSize: 13, color: shellSubtext, lineHeight: 1.6, marginBottom: 24 }}>
               Add their email and customize the message. Tapping "Send" opens your email app — you can review it before it goes.
             </div>
             {notifiableEntries.map(e => (
-              <div key={e.id} style={{ background: "#FFFFFF", borderRadius: 16, padding: "20px", marginBottom: 14 }}>
+              <div key={e.id} style={{ background: shellCard, borderRadius: 16, padding: "20px", marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                   {sent[e.id]
                     ? <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#4A9E7F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span style={{ color: "#FFF", fontSize: 14, fontWeight: 700 }}>✓</span></div>
                     : <div style={{ width: 32, height: 32, borderRadius: "50%", background: accentColor + "20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span style={{ fontSize: 14 }}>🙏</span></div>
                   }
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "#1A1F2E" }}>{e.name || "Someone"}</div>
-                    <div style={{ fontSize: 12, color: "#8A93A8" }}>{e.text}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: shellText }}>{e.name || "Someone"}</div>
+                    <div style={{ fontSize: 12, color: shellSubtext }}>{e.text}</div>
                   </div>
                 </div>
                 {!sent[e.id] && (
@@ -1030,12 +1094,12 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                       placeholder="Their email address"
                       value={emails[e.id] || ""}
                       onChange={ev => setEmails(prev => ({ ...prev, [e.id]: ev.target.value }))}
-                      style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #DDE3F0", background: "#EEF1F8", fontSize: 14, color: "#1A1F2E", marginBottom: 10, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
+                      style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid " + shellBorder, background: shellInput, fontSize: 14, color: shellText, marginBottom: 10, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
                     />
                     <textarea
                       value={messages[e.id] || ""}
                       onChange={ev => setMessages(prev => ({ ...prev, [e.id]: ev.target.value }))}
-                      style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #DDE3F0", background: "#EEF1F8", fontSize: 13, color: "#1A1F2E", marginBottom: 12, boxSizing: "border-box", outline: "none", fontFamily: "inherit", lineHeight: 1.65, resize: "none", minHeight: 100 }}
+                      style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid " + shellBorder, background: shellInput, fontSize: 13, color: shellText, marginBottom: 12, boxSizing: "border-box", outline: "none", fontFamily: "inherit", lineHeight: 1.65, resize: "none", minHeight: 100 }}
                     />
                     <button onClick={() => sendEmail(e)}
                       disabled={!emails[e.id]}
@@ -1050,7 +1114,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               </div>
             ))}
           </div>
-          <div style={{ padding: "16px 5vw 32px", background: "#EEF1F8", borderTop: "1px solid #DDE3F0" }}>
+          <div style={{ padding: "16px 5vw 32px", background: shellBg, borderTop: "1px solid " + shellBorder }}>
             <button onClick={onClose}
               style={{ background: accentColor, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
               Done
@@ -1074,7 +1138,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         const progress = countdown / 15;
         return (
           <svg width="44" height="44" viewBox="0 0 44 44" style={{ flexShrink: 0 }}>
-            <circle cx="22" cy="22" r={r} fill="none" stroke="#DDE3F0" strokeWidth="3" />
+            <circle cx="22" cy="22" r={r} fill="none" stroke={shellBorder} strokeWidth="3" />
             <circle cx="22" cy="22" r={r} fill="none" stroke={color} strokeWidth="3"
               strokeLinecap="round" strokeDasharray={circ}
               strokeDashoffset={circ * (1 - progress)}
@@ -1086,12 +1150,25 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       };
 
       return (
-        <div style={{ minHeight: "100vh", background: "#EEF1F8", display: "flex", flexDirection: "column" }}>
+        <div style={{ minHeight: "100vh", background: shellBg, display: "flex", flexDirection: "column" }}>
           {/* Fixed header */}
-          <div style={{ padding: "52px 5vw 16px", background: "#EEF1F8", borderBottom: "1px solid #DDE3F0" }}>
-            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: color, cursor: "pointer", padding: "0 0 12px 0", fontWeight: 500 }}>← Back</button>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4 }}>Guided Prayer</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em" }}>{title}</div>
+          <div style={{ padding: "52px 5vw 16px", background: shellBg, borderBottom: "1px solid " + shellBorder }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: color, cursor: "pointer", padding: "0 0 12px 0", fontWeight: 500 }}>← Back</button>
+              <button onClick={toggleMusic} style={{
+                background: musicOn ? accentColor : "transparent",
+                border: "1px solid " + (musicOn ? accentColor : shellBorder),
+                borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600,
+                color: musicOn ? "#FFFFFF" : shellSubtext, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 5, transition: "all 0.2s",
+                marginBottom: 12,
+              }}>
+                <span style={{ fontSize: 14 }}>{musicOn ? "♪" : "♩"}</span>
+                {musicOn ? "Music on" : "Music off"}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: shellSubtext, textTransform: "uppercase", marginBottom: 4 }}>Guided Prayer</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: shellText, letterSpacing: "-0.02em" }}>{title}</div>
           </div>
 
           {/* Scrollable content */}
@@ -1105,11 +1182,11 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: color, textTransform: "uppercase", marginBottom: 6 }}>
                   {step + 1} of {steps.length}
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 4 }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: shellText, letterSpacing: "-0.02em", marginBottom: 4 }}>
                   {current.title}
                 </div>
                 {current.subtitle && (
-                  <div style={{ fontSize: 13, color: "#8A93A8", fontStyle: "italic" }}>"{current.subtitle}"</div>
+                  <div style={{ fontSize: 13, color: shellSubtext, fontStyle: "italic" }}>"{current.subtitle}"</div>
                 )}
               </div>
 
@@ -1117,22 +1194,22 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               {current.scripture && (
                 <div style={{ background: color + "15", borderLeft: `3px solid ${color}`, borderRadius: "0 10px 10px 0", padding: "12px 14px", marginBottom: 16 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: color, marginBottom: 4 }}>{current.scripture.ref}</div>
-                  <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.65, fontStyle: "italic" }}>"{current.scripture.text}"</div>
+                  <div style={{ fontSize: 13, color: shellBody, lineHeight: 1.65, fontStyle: "italic" }}>"{current.scripture.text}"</div>
                 </div>
               )}
 
               {/* Note */}
               {current.note && (
-                <div style={{ fontSize: 14, color: "#2C3347", lineHeight: 1.75, marginBottom: 16 }}>{current.note}</div>
+                <div style={{ fontSize: 14, color: shellBody, lineHeight: 1.75, marginBottom: 16 }}>{current.note}</div>
               )}
 
               {/* Board entries */}
               {current.entries && current.entries.length > 0 && (
-                <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
+                <div style={{ background: shellCard, borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
                   {current.entrySections ? current.entrySections.map((sec, si) => (
                     <div key={si}>
                       {si > 0 && <div style={{ height: 1, background: "#DDE3F0", margin: "14px 0" }} />}
-                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 10 }}>{sec.label}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: shellSubtext, textTransform: "uppercase", marginBottom: 10 }}>{sec.label}</div>
                       <FadeEntryList items={sec.items} color={sec.color} shownKey={sec.key} shown={shown} onShowMore={showMore} />
                     </div>
                   )) : (
@@ -1147,9 +1224,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           </div>
 
           {/* Fixed footer — countdown + next */}
-          <div style={{ padding: "16px 5vw 32px", background: "#EEF1F8", borderTop: "1px solid #DDE3F0" }}>
+          <div style={{ padding: "16px 5vw 32px", background: shellBg, borderTop: "1px solid " + shellBorder }}>
             {isLast ? (
-              <button onClick={handleAmen}
+              <button onClick={handleAmenWithMusic}
                 style={{ background: color, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
                 Amen
               </button>
@@ -1172,7 +1249,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       );
     }
 
-    function GuidedPrayerScreen({ entries, onClose }) {
+    function GuidedPrayerScreen({ entries, onClose, isDark }) {
       const kingdomScriptures = React.useState(() => pickScriptures(2))[0];
       const active = (key) => (entries[key] || []).filter(e => !e.done);
 
@@ -1189,7 +1266,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const renderKingdomExtra = () => (
         <div>
           {kingdomScriptures.map((s, i) => (
-            <div key={i} style={{ background: "#EEF1F8", borderLeft: "3px solid #6B5FD6", borderRadius: "0 8px 8px 0", padding: "12px 14px", marginBottom: 10 }}>
+            <div key={i} style={{ background: isDark ? "#1C1F2A" : "#EEF1F8", borderLeft: "3px solid #6B5FD6", borderRadius: "0 8px 8px 0", padding: "12px 14px", marginBottom: 10 }}>
               <div style={{ fontSize: 12, color: "#6B5FD6", fontWeight: 600, marginBottom: 4 }}>{s.ref}</div>
               <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.65, fontStyle: "italic" }}>"{s.text}"</div>
             </div>
@@ -1213,11 +1290,11 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         if (s.extraKey === "doxology") return { ...s, extra: renderDoxologyExtra() };
         return s;
       });
-      return <StepPrayerShell title="The Lord's Prayer" steps={resolvedSteps} onClose={onClose} accentColor="#6B5FD6" intercessionEntries={entries.intercession || []} />;
+      return <StepPrayerShell title="The Lord's Prayer" steps={resolvedSteps} onClose={onClose} accentColor="#6B5FD6" intercessionEntries={entries.intercession || []} isDark={isDark} />;
     }
 
 
-    function TabernaclePrayerScreen({ entries, onClose }) {
+    function TabernaclePrayerScreen({ entries, onClose, isDark }) {
       const worshipVerse  = React.useState(() => pick("worship", 1))[0];
       const wordVerse     = React.useState(() => pick("word", 1))[0];
       const spiritVerse   = React.useState(() => pick("spirit", 1))[0];
@@ -1241,10 +1318,16 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         { title: "The Holy of Holies", subtitle: "Pure presence — beyond the veil", color: "#6B5FD6", scripture: presenceVerse[0], note: "You've arrived. Stop asking. Stop declaring. Just be still in His presence. The veil was torn. You have access. Stay here as long as you can.", entries: [], extra: renderHolyExtra() },
       ];
 
-      return <StepPrayerShell title="The Tabernacle Prayer" steps={steps} onClose={onClose} accentColor={tabAccent} intercessionEntries={entries.intercession || []} />;
+      return <StepPrayerShell title="The Tabernacle Prayer" steps={steps} onClose={onClose} accentColor={tabAccent} intercessionEntries={entries.intercession || []} isDark={isDark} />;
     }
 
-    function DailyOfficeScreen({ onClose }) {
+    function DailyOfficeScreen({ onClose, isDark }) {
+      const dCard = isDark ? "#1C1F2A" : "#FFFFFF";
+      const dBg   = isDark ? "#0F1117" : "#EEF1F8";
+      const dBorder = isDark ? "#2A2D3A" : "#DDE3F0";
+      const dText = isDark ? "#F0F2F8" : "#1A1F2E";
+      const dStone = isDark ? "#6B7280" : "#8A93A8";
+      const dBody = isDark ? "#C8CEDD" : "#2C3347";
       const [selected, setSelected] = React.useState(null);
       const [verse, setVerse] = React.useState(null);
 
@@ -1318,8 +1401,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             )}
 
             {/* Framework */}
-            <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "18px 20px", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 14 }}>How to pray this office</div>
+            <div style={{ background: dCard, borderRadius: 14, padding: "18px 20px", marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: dStone, textTransform: "uppercase", marginBottom: 14 }}>How to pray this office</div>
               {selected.framework.map((step, i) => (
                 <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12, alignItems: "flex-start" }}>
                   <div style={{ width: 24, height: 24, borderRadius: "50%", background: selected.color + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -1334,8 +1417,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             <PracticeTimer practiceText={"Use this time to pray through the framework above in your own words. No script — just you and God."} />
 
             {/* Set reminder */}
-            <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "18px 20px", marginTop: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 6 }}>Set a reminder</div>
+            <div style={{ background: dCard, borderRadius: 14, padding: "18px 20px", marginTop: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: dStone, textTransform: "uppercase", marginBottom: 6 }}>Set a reminder</div>
               <div style={{ fontSize: 13, color: "#8A93A8", marginBottom: 14, lineHeight: 1.6 }}>
                 Add {selected.name} to your calendar as a daily recurring event at {selected.time}. Marked busy so your time stays protected.
               </div>
@@ -1347,7 +1430,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 ↓ Download .ics file
               </button>
               <button onClick={() => generateGoogleLink(selected)}
-                style={{ background: "#FFFFFF", color: selected.color, border: `1px solid ${selected.color}`, borderRadius: 10, padding: "13px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%" }}>
+                style={{ background: dCard, color: selected.color, border: `1px solid ${selected.color}`, borderRadius: 10, padding: "13px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                 Open Google Calendar
               </button>
             </div>
@@ -1363,8 +1446,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4, marginTop: 16 }}>Model 3</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 10 }}>The Daily Office</div>
 
-          <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "18px 20px", marginBottom: 24 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1A1F2E", marginBottom: 8 }}>What is the Daily Office?</div>
+          <div style={{ background: dCard, borderRadius: 14, padding: "18px 20px", marginBottom: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: dText, marginBottom: 8 }}>What is the Daily Office?</div>
             <div style={{ fontSize: 13, lineHeight: 1.75, color: "#2C3347" }}>
               The Daily Office is the ancient practice of fixed-hour prayer — pausing at set times throughout the day to turn toward God. Christians have practiced it since the early church, rooted in Jewish prayer rhythms that Jesus himself observed.
               <br /><br />
@@ -1376,7 +1459,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
           {DAILY_OFFICES.map(office => (
             <div key={office.id} onClick={() => openOffice(office)}
-              style={{ background: office.id === "night" ? "#2D2A5E" : "#FFFFFF", borderRadius: 14, padding: "18px 20px", marginBottom: 10, cursor: "pointer", transition: "all 0.15s" }}>
+              style={{ background: office.id === "night" ? "#2D2A5E" : dCard, borderRadius: 14, padding: "18px 20px", marginBottom: 10, cursor: "pointer", transition: "all 0.15s" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: office.color + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>
                   {office.icon}
@@ -1398,7 +1481,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
 
     // ── Psalms Guided Prayer (single type) ────────────────────────────────────
-    function PsalmTypePrayerScreen({ psalmType, entries, onClose }) {
+    function PsalmTypePrayerScreen({ psalmType, entries, onClose, isDark }) {
       const verse = React.useState(() => {
         const shuffled = [...psalmType.scriptures].sort(() => Math.random() - 0.5);
         return shuffled[0];
@@ -1411,7 +1494,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const renderAnsweredExtra = () => {
         if (psalmType.id !== "thanksgiving" || answered.length === 0) return null;
         return (
-          <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
+          <div style={{ background: isDark ? "#1C1F2A" : "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 10 }}>Answered prayers</div>
             {answered.slice(0, 3).map(e => (
               <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
@@ -1428,10 +1511,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         { title: "Practice", subtitle: psalmType.keyPsalm, color: PSALM_COLOR, note: psalmType.practice, entries: [] },
       ];
 
-      return <StepPrayerShell title={psalmType.name} steps={steps} onClose={onClose} accentColor={PSALM_COLOR} intercessionEntries={entries.intercession || []} />;
+      return <StepPrayerShell title={psalmType.name} steps={steps} onClose={onClose} accentColor={PSALM_COLOR} intercessionEntries={entries.intercession || []} isDark={isDark} />;
     }
 
-    function PsalmsFullPrayerScreen({ entries, onClose }) {
+    function PsalmsFullPrayerScreen({ entries, onClose, isDark }) {
       const verses = React.useState(() =>
         PSALM_TYPES.reduce((acc, t) => {
           const shuffled = [...t.scriptures].sort(() => Math.random() - 0.5);
@@ -1447,7 +1530,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const renderAnsweredExtra = () => {
         if (answered.length === 0) return null;
         return (
-          <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
+          <div style={{ background: isDark ? "#1C1F2A" : "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 10 }}>Answered prayers</div>
             {answered.slice(0, 3).map(e => (
               <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
@@ -1469,15 +1552,15 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         extra: type.id === "thanksgiving" ? renderAnsweredExtra() : null,
       }));
 
-      return <StepPrayerShell title="Praying the Psalms" steps={steps} onClose={onClose} accentColor="#3D7EB0" intercessionEntries={entries.intercession || []} />;
+      return <StepPrayerShell title="Praying the Psalms" steps={steps} onClose={onClose} accentColor="#3D7EB0" intercessionEntries={entries.intercession || []} isDark={isDark} />;
     }
 
-    function PsalmsModelScreen({ entries, onClose }) {
+    function PsalmsModelScreen({ entries, onClose, isDark }) {
       const [selectedType, setSelectedType] = React.useState(null);
       const [showFullPrayer, setShowFullPrayer] = React.useState(false);
 
-      if (showFullPrayer) return <PsalmsFullPrayerScreen entries={entries} onClose={() => { onClose("Praying the Psalms — Full"); setShowFullPrayer(false); }} />;
-      if (selectedType) return <PsalmTypePrayerScreen psalmType={selectedType} entries={entries} onClose={() => { onClose(selectedType.name); setSelectedType(null); }} />;
+      if (showFullPrayer) return <PsalmsFullPrayerScreen entries={entries} onClose={() => { onClose("Praying the Psalms — Full"); setShowFullPrayer(false); }} isDark={isDark} />;
+      if (selectedType) return <PsalmTypePrayerScreen psalmType={selectedType} entries={entries} onClose={() => { onClose(selectedType.name); setSelectedType(null); }} isDark={isDark} />;
 
       const typeColors = { praise: "#4A9E7F", lament: "#5B8DD9", penitence: "#9E6B8A", trust: "#B87333", thanksgiving: "#3D7EB0" };
 
@@ -1488,9 +1571,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 4, marginTop: 16 }}>Model 4</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 10 }}>Praying the Psalms</div>
 
-          <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "18px 20px", marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1A1F2E", marginBottom: 8 }}>The prayer book of the Bible</div>
-            <div style={{ fontSize: 13, lineHeight: 1.75, color: "#2C3347" }}>
+          <div style={{ background: isDark ? "#1C1F2A" : "#FFFFFF", borderRadius: 14, padding: "18px 20px", marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: isDark ? "#F0F2F8" : "#1A1F2E", marginBottom: 8 }}>The prayer book of the Bible</div>
+            <div style={{ fontSize: 13, lineHeight: 1.75, color: isDark ? "#C8CEDD" : "#2C3347" }}>
               The Psalms are 150 prayers written over centuries by people in every imaginable circumstance. They cover the full range of human experience — joy, grief, anger, trust, confession, praise.
               <br /><br />
               Jesus quoted the Psalms. The early church prayed the Psalms. They are a school of prayer — showing you not just what to pray but how to bring your whole honest self to God.
@@ -1508,7 +1591,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           {PSALM_TYPES.map(type => {
             const color = typeColors[type.id];
             return (
-              <div key={type.id} style={{ background: "#FFFFFF", borderRadius: 14, padding: "18px 20px", marginBottom: 10, cursor: "pointer" }}>
+              <div key={type.id} style={{ background: isDark ? "#1C1F2A" : "#FFFFFF", borderRadius: 14, padding: "18px 20px", marginBottom: 10, cursor: "pointer" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 14 }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16 }}>
                     <span style={{ color: color }}>{type.icon}</span>
@@ -1590,8 +1673,11 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [tab, setTab]                   = useState("learn");
       const [showHome, setShowHome]         = useState(true);
       const [showSettings, setShowSettings] = useState(false);
+      const [darkMode, setDarkMode]           = useState(null); // null = follow system
       const [prayerLog, setPrayerLog]         = useState([]);
       const [showPrayer, setShowPrayer]     = useState(false);
+      const [showModelPicker, setShowModelPicker] = useState(false);
+      const [lastModel, setLastModel]       = useState(null);
       const [showTabPrayer, setShowTabPrayer] = useState(false);
       const [showDailyOffice, setShowDailyOffice] = useState(false);
       const [showPsalms, setShowPsalms]         = useState(false);
@@ -1608,7 +1694,15 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [activeSection, setActiveSection] = useState(null);
       const [showAdd, setShowAdd]           = useState(false);
       const [newEntry, setNewEntry]         = useState({ name: "", text: "" });
+      const [testimonyPrompt, setTestimonyPrompt] = useState(null); // { sectionId, entry }
+      const [testimonyNote, setTestimonyNote] = useState("");
       const [dataLoading, setDataLoading]   = useState(false);
+
+      // ── Sync body background with theme ──
+      React.useEffect(() => {
+        document.body.style.background = isDark ? "#0F1117" : "#EEF1F8";
+        document.body.style.color = isDark ? "#F0F2F8" : "#1A1F2E";
+      }, [isDark]);
 
       // ── Auth listener ──
       useEffect(() => {
@@ -1632,6 +1726,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             if (data.tabSegments) setTabSegments(data.tabSegments);
             if (data.schedule)    setSchedule(data.schedule);
             if (data.prayerLog)   setPrayerLog(data.prayerLog);
+            if (data.lastModel)   setLastModel(data.lastModel);
+            if (data.darkMode !== undefined) setDarkMode(data.darkMode);
           }
           setDataLoading(false);
         }).catch(() => setDataLoading(false));
@@ -1642,17 +1738,23 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         if (!user || dataLoading) return;
         const ref = db.collection("users").doc(user.uid);
         const timer = setTimeout(() => {
-          ref.set({ entries, segments, tabSegments, schedule, prayerLog }, { merge: true });
+          ref.set({ entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode }, { merge: true });
         }, 1000);
         return () => clearTimeout(timer);
       }, [entries, segments, tabSegments, schedule, user]);
 
       const signOut = () => auth.signOut();
 
+      // Resolve dark mode — null means follow system
+      const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = darkMode === null ? systemDark : darkMode;
+      const C = THEMES[isDark ? 'dark' : 'light'];
+
       const completed = segments.filter(s => s.complete).length;
 
       const logPrayer = (modelName) => {
         const entry = { id: Date.now(), model: modelName, date: new Date().toISOString() };
+        setLastModel(modelName);
         setPrayerLog(prev => {
           const updated = [entry, ...prev].slice(0, 90); // keep 90 days
           if (user) {
@@ -1691,10 +1793,38 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       };
 
       const toggleDone = (sectionId, id) => {
+        const entry = (entries[sectionId] || []).find(e => e.id === id);
+        const isMarkingDone = entry && !entry.done;
         setEntries({
           ...entries,
           [sectionId]: entries[sectionId].map(e => e.id === id ? { ...e, done: !e.done } : e)
         });
+        // Trigger testimony prompt when marking petition or intercession as answered
+        if (isMarkingDone && (sectionId === "petition" || sectionId === "intercession")) {
+          setTestimonyNote("");
+          setTestimonyPrompt({ sectionId, entry });
+        }
+      };
+
+      const addTestimony = () => {
+        if (!testimonyPrompt) return;
+        const { entry, sectionId } = testimonyPrompt;
+        const testimony = {
+          id: Date.now(),
+          text: entry.name ? entry.name + " — " + entry.text : entry.text,
+          note: testimonyNote,
+          date: "Today",
+          done: false,
+          fromSection: sectionId,
+        };
+        setEntries(prev => ({ ...prev, testimonies: [testimony, ...(prev.testimonies || [])] }));
+        setTestimonyPrompt(null);
+        setTestimonyNote("");
+      };
+
+      const skipTestimony = () => {
+        setTestimonyPrompt(null);
+        setTestimonyNote("");
       };
 
       // ── Styles ──
@@ -1997,9 +2127,21 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase" }}>Prayer Board</div>
-              <button onClick={() => setShowPrayer(true)} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 20, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", letterSpacing: "0.04em" }}>
-                Pray Now
-              </button>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button onClick={() => {
+                  const m = lastModel || "";
+                  if (!m || m === "The Lord's Prayer") { setShowPrayer(true); }
+                  else if (m === "The Tabernacle Prayer") { setShowTabPrayer(true); }
+                  else if (m.includes("Office") || m.includes("Morning") || m.includes("Evening") || m.includes("Midday") || m.includes("Night")) { setShowDailyOffice(true); }
+                  else { setShowPsalms(true); }
+                }} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 20, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", letterSpacing: "0.04em" }}>
+                  {lastModel ? "Pray Now (" + lastModel.replace("The ", "").split(" ")[0] + ")" : "Pray Now"}
+                </button>
+                <button onClick={() => setShowModelPicker(true)}
+                  style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 20, padding: "8px 14px", fontSize: 12, color: C.stone, cursor: "pointer", fontWeight: 500 }}>
+                  Change
+                </button>
+              </div>
             </div>
             {SECTIONS.map(sec => {
               const count = entries[sec.id].filter(e => !e.done).length;
@@ -2180,6 +2322,24 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
         return (
           <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
+
+            {/* Appearance */}
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 14 }}>Appearance</div>
+            <div style={{ background: C.card, borderRadius: 14, padding: "6px", marginBottom: 28, display: "flex", gap: 6 }}>
+              {[
+                { label: "System", value: null, icon: "◐" },
+                { label: "Light", value: false, icon: "☀" },
+                { label: "Dark", value: true, icon: "☾" },
+              ].map(opt => (
+                <button key={String(opt.value)} onClick={() => setDarkMode(opt.value)}
+                  style={{ flex: 1, padding: "10px 8px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, transition: "all 0.2s",
+                    background: darkMode === opt.value ? C.accent : "transparent",
+                    color: darkMode === opt.value ? "#FFFFFF" : C.stone }}>
+                  {opt.icon} {opt.label}
+                </button>
+              ))}
+            </div>
+
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 6 }}>Schedule</div>
             <div style={{ fontSize: 13, color: C.stone, marginBottom: 24, lineHeight: 1.6 }}>
               Consistency and practice bring prayer to life. Block your time and protect it.
@@ -2485,24 +2645,83 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           {/* Nav */}
           <nav style={{ display: "flex", borderBottom: `1px solid ${C.paper}`, background: C.bg, position: "sticky", top: 0, zIndex: 10 }}>
             {[["learn","Learn"],["board","Board"],["fast","Fast"]].map(([id, label]) => (
-              <button key={id} style={navBtn(tab === id)} onClick={() => { setTab(id); setShowHome(false); setShowSettings(false); setShowDailyOffice(false); setShowTabPrayer(false); setShowPrayer(false); setShowPsalms(false); }}>{label}</button>
+              <button key={id} style={navBtn(tab === id)} onClick={() => { setTab(id); setShowHome(false); setShowSettings(false); setShowDailyOffice(false); setShowTabPrayer(false); setShowPrayer(false); setShowPsalms(false); setShowModelPicker(false); }}>{label}</button>
             ))}
           </nav>
 
           {showHome ? renderHome() : showSettings ? renderSettings() : showPsalms ? (
-            <PsalmsModelScreen entries={entries} onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowPsalms(false); }} />
+            <PsalmsModelScreen entries={entries} onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowPsalms(false); }} isDark={isDark} />
           ) : showDailyOffice ? (
-            <DailyOfficeScreen onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowDailyOffice(false); }} />
+            <DailyOfficeScreen onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowDailyOffice(false); }} isDark={isDark} />
           ) : showTabPrayer ? (
-            <TabernaclePrayerScreen entries={entries} onClose={() => { logPrayer("The Tabernacle Prayer"); setShowTabPrayer(false); }} />
+            <TabernaclePrayerScreen entries={entries} onClose={() => { logPrayer("The Tabernacle Prayer"); setShowTabPrayer(false); }} isDark={isDark} />
           ) : showPrayer ? (
-            <GuidedPrayerScreen entries={entries} onClose={() => { logPrayer("The Lord's Prayer"); setShowPrayer(false); }} />
+            <GuidedPrayerScreen entries={entries} onClose={() => { logPrayer("The Lord's Prayer"); setShowPrayer(false); }} isDark={isDark} />
           ) : (
             <>
               {tab === "learn" && renderLearn()}
               {tab === "board" && renderBoard()}
               {tab === "fast"  && renderFast()}
             </>
+          )}
+
+
+          {/* Testimony Prompt Modal */}
+          {testimonyPrompt && (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+              <div style={{ background: C.card, borderRadius: "20px 20px 0 0", padding: "24px 24px 40px", width: "100%", maxWidth: 600 }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: C.paper, margin: "0 auto 20px" }} />
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.sage, textTransform: "uppercase", marginBottom: 8 }}>Answered prayer</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: C.ink, letterSpacing: "-0.02em", marginBottom: 6 }}>God came through.</div>
+                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.65, marginBottom: 20 }}>
+                  Want to add this to your Testimonies? It will show up in your Thanksgiving prayers as a reminder of what God has done.
+                </div>
+                <div style={{ background: C.bg, borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, color: C.stone, marginBottom: 4 }}>Original request</div>
+                  <div style={{ fontSize: 14, color: C.ink, fontWeight: 500 }}>
+                    {testimonyPrompt.entry.name ? testimonyPrompt.entry.name + " — " : ""}{testimonyPrompt.entry.text}
+                  </div>
+                </div>
+                <textarea
+                  placeholder="What did God do? (optional)"
+                  value={testimonyNote}
+                  onChange={e => setTestimonyNote(e.target.value)}
+                  style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid " + C.paper, background: C.bg, fontSize: 14, color: C.ink, marginBottom: 16, boxSizing: "border-box", outline: "none", fontFamily: "inherit", lineHeight: 1.65, resize: "none", minHeight: 80 }}
+                />
+                <button onClick={addTestimony}
+                  style={{ background: C.sage, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "14px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
+                  Add to Testimonies
+                </button>
+                <button onClick={skipTestimony}
+                  style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 10, padding: "14px 20px", fontSize: 14, color: C.stone, cursor: "pointer", width: "100%" }}>
+                  Skip
+                </button>
+              </div>
+            </div>
+          )}
+          {/* Model Picker Modal */}
+          {showModelPicker && (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setShowModelPicker(false)}>
+              <div style={{ background: C.white, borderRadius: "20px 20px 0 0", padding: "24px 24px 40px", width: "100%", maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: C.paper, margin: "0 auto 20px" }} />
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 16 }}>Choose a model</div>
+                {[
+                  { label: "The Lord's Prayer", sub: "Jesus' model for approaching God", color: C.accent, fn: () => { setShowModelPicker(false); setShowPrayer(true); } },
+                  { label: "The Tabernacle Prayer", sub: "A journey deeper into His presence", color: "#B87333", fn: () => { setShowModelPicker(false); setShowTabPrayer(true); } },
+                  { label: "The Daily Office", sub: "Fixed-hour prayer for today", color: "#4A9E7F", fn: () => { setShowModelPicker(false); setShowDailyOffice(true); } },
+                  { label: "Praying the Psalms", sub: "Honest prayer through every posture", color: "#3D7EB0", fn: () => { setShowModelPicker(false); setShowPsalms(true); } },
+                ].map((m, i) => (
+                  <div key={i} onClick={m.fn}
+                    style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 12, marginBottom: 8, cursor: "pointer", background: C.bg, border: "1px solid " + C.paper }}>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{m.label}</div>
+                      <div style={{ fontSize: 12, color: C.stone }}>{m.sub}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       );
