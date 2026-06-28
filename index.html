@@ -1085,82 +1085,40 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const active = (key) => (entries[key] || []).filter(e => !e.done);
 
       const steps = [
-        {
-          title: "Our Father in heaven",
-          subtitle: "I thank you God for... and I worship you because...",
-          color: "#4A9E7F",
-          entries: [...active("praise"), ...active("worship")],
-          entrySections: [
-            { label: "Praise", key: "praise", color: "#4A9E7F", items: active("praise") },
-            { label: "Worship", key: "worship", color: "#6B5FD6", items: active("worship") },
-          ],
-        },
-        {
-          title: "Your kingdom come, your will be done",
-          subtitle: "God, I surrender my agenda to yours",
-          color: "#6B5FD6",
-          note: "Pause and declare who God is. Let these verses anchor your heart before you ask for anything.",
-          entries: [],
-          extra: (
-            <div>
-              {kingdomScriptures.map((s, i) => (
-                <div key={i} style={{ background: "#EEF1F8", borderLeft: "3px solid #6B5FD6", borderRadius: "0 8px 8px 0", padding: "12px 14px", marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, color: "#6B5FD6", fontWeight: 600, marginBottom: 4 }}>{s.ref}</div>
-                  <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.65, fontStyle: "italic" }}>"{s.text}"</div>
-                </div>
-              ))}
-            </div>
-          ),
-        },
-        {
-          title: "Give us today our daily bread",
-          subtitle: "God, I am asking for this for myself...",
-          color: "#5B8DD9",
-          entries: active("petition"),
-          shownKey: "petition",
-        },
-        {
-          title: "Forgive us our debts",
-          subtitle: "God, here is where I messed up...",
-          color: "#9E6B8A",
-          entries: active("confession"),
-          shownKey: "confession",
-        },
-        {
-          title: "As we forgive our debtors",
-          subtitle: "God, I choose to forgive...",
-          color: "#C0724A",
-          note: "Forgiveness starts as a decision before it becomes a feeling. Name them and release your claim.",
-          entries: active("forgiveness"),
-          shownKey: "forgiveness",
-        },
-        {
-          title: "Deliver us from evil",
-          subtitle: "God, I pray for other people...",
-          color: "#B87333",
-          entries: active("intercession"),
-          shownKey: "intercession",
-        },
-        {
-          title: "For thine is the kingdom",
-          subtitle: "Yours is the kingdom, the power, and the glory forever",
-          color: "#6B5FD6",
-          entries: active("worship"),
-          shownKey: "closing",
-          extra: (
-            <div style={{ background: "#2D2A5E", borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontStyle: "italic", marginBottom: 10 }}>
-                "For yours is the kingdom and the power and the glory forever. Amen."
-              </div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.7 }}>
-                Close by returning to worship. What you began with — eyes on Him — is where you end.
-              </div>
-            </div>
-          ),
-        },
+        { title: "Our Father in heaven", subtitle: "I thank you God for... and I worship you because...", color: "#4A9E7F", entries: [...active("praise"), ...active("worship")], entrySections: [ { label: "Praise", key: "praise", color: "#4A9E7F", items: active("praise") }, { label: "Worship", key: "worship", color: "#6B5FD6", items: active("worship") } ] },
+        { title: "Your kingdom come, your will be done", subtitle: "God, I surrender my agenda to yours", color: "#6B5FD6", note: "Pause and declare who God is. Let these verses anchor your heart before you ask for anything.", entries: [], extraKey: "kingdom" },
+        { title: "Give us today our daily bread", subtitle: "God, I am asking for this for myself...", color: "#5B8DD9", entries: active("petition"), shownKey: "petition" },
+        { title: "Forgive us our debts", subtitle: "God, here is where I messed up...", color: "#9E6B8A", entries: active("confession"), shownKey: "confession" },
+        { title: "As we forgive our debtors", subtitle: "God, I choose to forgive...", color: "#C0724A", note: "Forgiveness starts as a decision before it becomes a feeling. Name them and release your claim.", entries: active("forgiveness"), shownKey: "forgiveness" },
+        { title: "Deliver us from evil", subtitle: "God, I pray for other people...", color: "#B87333", entries: active("intercession"), shownKey: "intercession" },
+        { title: "For thine is the kingdom", subtitle: "Yours is the kingdom, the power, and the glory forever", color: "#6B5FD6", entries: active("worship"), shownKey: "closing", extraKey: "doxology" },
       ];
 
-      return <StepPrayerShell title="The Lord's Prayer" steps={steps} onClose={onClose} accentColor="#6B5FD6" />;
+      const extras = {
+        kingdom: (
+          <div>
+            {kingdomScriptures.map((s, i) => (
+              <div key={i} style={{ background: "#EEF1F8", borderLeft: "3px solid #6B5FD6", borderRadius: "0 8px 8px 0", padding: "12px 14px", marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: "#6B5FD6", fontWeight: 600, marginBottom: 4 }}>{s.ref}</div>
+                <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.65, fontStyle: "italic" }}>"{s.text}"</div>
+              </div>
+            ))}
+          </div>
+        ),
+        doxology: (
+          <div style={{ background: "#2D2A5E", borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontStyle: "italic", marginBottom: 10 }}>
+              "For yours is the kingdom and the power and the glory forever. Amen."
+            </div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.7 }}>
+              Close by returning to worship. What you began with — eyes on Him — is where you end.
+            </div>
+          </div>
+        ),
+      };
+
+      const resolvedSteps = steps.map(s => s.extraKey ? { ...s, extra: extras[s.extraKey] } : s);
+      return <StepPrayerShell title="The Lord's Prayer" steps={resolvedSteps} onClose={onClose} accentColor="#6B5FD6" />;
     }
 
 
@@ -1172,73 +1130,20 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const active = (key) => (entries[key] || []).filter(e => !e.done);
       const tabAccent = "#B87333";
 
+      const holyExtra = (
+        <div style={{ background: "#2D2A5E", borderRadius: 14, padding: "16px 18px", marginTop: 16 }}>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontStyle: "italic", textAlign: "center" }}>Set a timer. Say nothing. Just remain.</div>
+        </div>
+      );
+
       const steps = [
-        {
-          title: "The Gate",
-          subtitle: "Entering with thanksgiving",
-          color: "#4A9E7F",
-          scripture: { ref: "Psalm 100:4", text: "Enter his gates with thanksgiving, and his courts with praise! Give thanks to him; bless his name!" },
-          entries: active("praise"),
-          shownKey: "praise",
-        },
-        {
-          title: "The Brazen Altar",
-          subtitle: "Surrender and lay it all down",
-          color: "#9E6B8A",
-          scripture: { ref: "Romans 12:1", text: "Present your bodies as a living sacrifice, holy and acceptable to God, which is your spiritual worship." },
-          note: "Lay it all down. What you're carrying. What you've done. What's been done to you.",
-          entries: [...active("confession"), ...active("forgiveness")],
-          entrySections: [
-            { label: "Confession", key: "confession", color: "#9E6B8A", items: active("confession") },
-            { label: "Forgiveness", key: "forgiveness", color: "#C0724A", items: active("forgiveness") },
-          ],
-        },
-        {
-          title: "The Brazen Laver",
-          subtitle: "Cleansing through the Word",
-          color: "#5B8DD9",
-          scripture: wordVerse[0],
-          note: "Let the Word wash over you. Declare who God is.",
-          entries: active("worship"),
-          shownKey: "worship",
-        },
-        {
-          title: "The Table of Showbread",
-          subtitle: "Standing on His promises",
-          color: "#6B5FD6",
-          scripture: worshipVerse[0],
-          note: "Stand on what God has said. Declare His promises over your life and your needs.",
-          entries: [],
-        },
-        {
-          title: "The Golden Lampstand",
-          subtitle: "Inviting the Holy Spirit to lead",
-          color: "#F0A500",
-          scripture: spiritVerse[0],
-          note: "Pause here. Ask the Holy Spirit to lead the rest of your prayer. Say: "Holy Spirit, show me what to pray. I don't want to pray only my own thoughts. Lead me." Then wait quietly for a moment before continuing.",
-          entries: [],
-        },
-        {
-          title: "The Altar of Incense",
-          subtitle: "Intercession rising to God",
-          color: "#B87333",
-          scripture: { ref: "Revelation 5:8", text: "The golden bowls full of incense are the prayers of the saints." },
-          entries: active("intercession"),
-          shownKey: "intercession",
-        },
-        {
-          title: "The Holy of Holies",
-          subtitle: "Pure presence — beyond the veil",
-          color: "#6B5FD6",
-          scripture: presenceVerse[0],
-          note: "You've arrived. Stop asking. Stop declaring. Just be still in His presence. The veil was torn. You have access. Stay here as long as you can.",
-          entries: [],
-          extra: (
-            <div style={{ background: "#2D2A5E", borderRadius: 14, padding: "16px 18px", marginTop: 16 }}>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontStyle: "italic", textAlign: "center" }}>Set a timer. Say nothing. Just remain.</div>
-            </div>
-          ),
-        },
+        { title: "The Gate", subtitle: "Entering with thanksgiving", color: "#4A9E7F", scripture: { ref: "Psalm 100:4", text: "Enter his gates with thanksgiving, and his courts with praise! Give thanks to him; bless his name!" }, entries: active("praise"), shownKey: "praise" },
+        { title: "The Brazen Altar", subtitle: "Surrender and lay it all down", color: "#9E6B8A", scripture: { ref: "Romans 12:1", text: "Present your bodies as a living sacrifice, holy and acceptable to God, which is your spiritual worship." }, note: "Lay it all down. What you're carrying. What you've done. What's been done to you.", entries: [...active("confession"), ...active("forgiveness")], entrySections: [ { label: "Confession", key: "confession", color: "#9E6B8A", items: active("confession") }, { label: "Forgiveness", key: "forgiveness", color: "#C0724A", items: active("forgiveness") } ] },
+        { title: "The Brazen Laver", subtitle: "Cleansing through the Word", color: "#5B8DD9", scripture: wordVerse[0], note: "Let the Word wash over you. Declare who God is.", entries: active("worship"), shownKey: "worship" },
+        { title: "The Table of Showbread", subtitle: "Standing on His promises", color: "#6B5FD6", scripture: worshipVerse[0], note: "Stand on what God has said. Declare His promises over your life and your needs.", entries: [] },
+        { title: "The Golden Lampstand", subtitle: "Inviting the Holy Spirit to lead", color: "#F0A500", scripture: spiritVerse[0], note: "Pause here. Ask the Holy Spirit to lead the rest of your prayer. Say: 'Holy Spirit, show me what to pray. I don't want to pray only my own thoughts. Lead me.' Then wait quietly for a moment before continuing.", entries: [] },
+        { title: "The Altar of Incense", subtitle: "Intercession rising to God", color: "#B87333", scripture: { ref: "Revelation 5:8", text: "The golden bowls full of incense are the prayers of the saints." }, entries: active("intercession"), shownKey: "intercession" },
+        { title: "The Holy of Holies", subtitle: "Pure presence — beyond the veil", color: "#6B5FD6", scripture: presenceVerse[0], note: "You've arrived. Stop asking. Stop declaring. Just be still in His presence. The veil was torn. You have access. Stay here as long as you can.", entries: [], extra: holyExtra },
       ];
 
       return <StepPrayerShell title="The Tabernacle Prayer" steps={steps} onClose={onClose} accentColor={tabAccent} />;
@@ -1401,37 +1306,24 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         return shuffled[0];
       })[0];
 
-      const active = (entries[psalmType.boardKey] || []).filter(e => !e.done);
+      const boardEntries = (entries[psalmType.boardKey] || []).filter(e => !e.done);
       const answered = (entries.praise || []).filter(e => e.done);
 
-      const steps = [
-        {
-          title: psalmType.name,
-          subtitle: psalmType.tag,
-          color: PSALM_COLOR,
-          scripture: verse,
-          note: psalmType.teaching.split("\n\n")[0],
-          entries: active,
-          shownKey: psalmType.id,
-          extra: psalmType.id === "thanksgiving" && answered.length > 0 ? (
-            <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 10 }}>Answered prayers</div>
-              {answered.slice(0, 3).map(e => (
-                <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4A9E7F", flexShrink: 0, marginTop: 6 }} />
-                  <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.6 }}>{e.text}</div>
-                </div>
-              ))}
+      const answeredExtra = psalmType.id === "thanksgiving" && answered.length > 0 ? (
+        <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 10 }}>Answered prayers</div>
+          {answered.slice(0, 3).map(e => (
+            <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4A9E7F", flexShrink: 0, marginTop: 6 }} />
+              <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.6 }}>{e.text}</div>
             </div>
-          ) : null,
-        },
-        {
-          title: "Practice",
-          subtitle: psalmType.keyPsalm,
-          color: PSALM_COLOR,
-          note: psalmType.practice,
-          entries: [],
-        },
+          ))}
+        </div>
+      ) : null;
+
+      const steps = [
+        { title: psalmType.name, subtitle: psalmType.tag, color: PSALM_COLOR, scripture: verse, note: psalmType.teaching.split("\n\n")[0], entries: boardEntries, shownKey: psalmType.id, extra: answeredExtra },
+        { title: "Practice", subtitle: psalmType.keyPsalm, color: PSALM_COLOR, note: psalmType.practice, entries: [] },
       ];
 
       return <StepPrayerShell title={psalmType.name} steps={steps} onClose={onClose} accentColor={PSALM_COLOR} />;
@@ -1450,6 +1342,18 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const answered = (entries.praise || []).filter(e => e.done);
       const typeColors = { praise: "#4A9E7F", lament: "#5B8DD9", penitence: "#9E6B8A", trust: "#B87333", thanksgiving: "#3D7EB0" };
 
+      const answeredExtra = answered.length > 0 ? (
+        <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 10 }}>Answered prayers</div>
+          {answered.slice(0, 3).map(e => (
+            <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4A9E7F", flexShrink: 0, marginTop: 6 }} />
+              <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.6 }}>{e.text}</div>
+            </div>
+          ))}
+        </div>
+      ) : null;
+
       const steps = PSALM_TYPES.map(type => ({
         title: type.name,
         subtitle: type.tag,
@@ -1457,17 +1361,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         scripture: verses[type.id],
         entries: active(type.boardKey),
         shownKey: type.id,
-        extra: type.id === "thanksgiving" && answered.length > 0 ? (
-          <div style={{ background: "#FFFFFF", borderRadius: 14, padding: "16px 18px", marginTop: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#8A93A8", textTransform: "uppercase", marginBottom: 10 }}>Answered prayers</div>
-            {answered.slice(0, 3).map(e => (
-              <div key={e.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4A9E7F", flexShrink: 0, marginTop: 6 }} />
-                <div style={{ fontSize: 13, color: "#2C3347", lineHeight: 1.6 }}>{e.text}</div>
-              </div>
-            ))}
-          </div>
-        ) : null,
+        extra: type.id === "thanksgiving" ? answeredExtra : null,
       }));
 
       return <StepPrayerShell title="Praying the Psalms" steps={steps} onClose={onClose} accentColor="#3D7EB0" />;
