@@ -658,16 +658,12 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
     ];
 
     const INITIAL_ENTRIES = {
-      praise:       [{ id: 1, text: "My family's health", date: "Jun 20", done: false }],
-      worship:      [{ id: 2, text: "You are faithful and unchanging", date: "Jun 18", done: false }],
-      petition:     [{ id: 3, text: "Clarity on next steps at work", date: "Jun 20", done: false }],
-      intercession: [
-        { id: 4, name: "Marcus", text: "Job interview on Thursday", date: "Jun 20", done: false },
-        { id: 5, name: "Mom",    text: "Knee surgery recovery",     date: "Jun 15", done: false },
-        { id: 6, name: "Deon",   text: "Marriage counseling",       date: "Jun 10", done: true  },
-      ],
-      confession:   [{ id: 7, text: "Was short with my family this morning", date: "Jun 19", done: false }],
-      forgiveness:  [{ id: 8, name: "A coworker", text: "Said something that hurt me last week", date: "Jun 18", done: false }],
+      praise:       [{ id: 101, text: "Thank you for this day and the people in my life.", date: "Today", done: false, sample: true }],
+      worship:      [{ id: 102, text: "You are faithful — the same yesterday, today, and forever.", date: "Today", done: false, sample: true }],
+      petition:     [{ id: 103, text: "Give me clarity and wisdom for what's ahead.", date: "Today", done: false, sample: true }],
+      intercession: [{ id: 104, name: "A friend", text: "Strength and peace in a hard season.", date: "Today", done: false, sample: true }],
+      confession:   [{ id: 105, text: "I was impatient today. Forgive me and renew a right spirit in me.", date: "Today", done: false, sample: true }],
+      forgiveness:  [{ id: 106, name: "Someone who hurt me", text: "I choose to release this and trust you with it.", date: "Today", done: false, sample: true }],
       testimonies:  [],
     };
 
@@ -1696,6 +1692,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [newEntry, setNewEntry]         = useState({ name: "", text: "" });
       const [testimonyPrompt, setTestimonyPrompt] = useState(null); // { sectionId, entry }
       const [testimonyNote, setTestimonyNote] = useState("");
+      const [editingEntry, setEditingEntry]   = useState(null); // { sectionId, entry }
+      const [editText, setEditText]           = useState("");
+      const [editName, setEditName]           = useState("");
       const [dataLoading, setDataLoading]   = useState(false);
 
       // ── Sync body background with theme ──
@@ -1721,13 +1720,28 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         ref.get().then(doc => {
           if (doc.exists) {
             const data = doc.data();
-            if (data.entries)     setEntries({ ...INITIAL_ENTRIES, ...data.entries });
+            if (data.entries) {
+              // Merge carefully — only add missing keys from INITIAL_ENTRIES, never overwrite real data
+              const merged = { ...INITIAL_ENTRIES };
+              Object.keys(data.entries).forEach(key => {
+                merged[key] = data.entries[key];
+              });
+              // Ensure testimonies key exists even if not in saved data
+              if (!merged.testimonies) merged.testimonies = [];
+              setEntries(merged);
+            }
             if (data.segments)    setSegments(data.segments);
             if (data.tabSegments) setTabSegments(data.tabSegments);
             if (data.schedule)    setSchedule(data.schedule);
             if (data.prayerLog)   setPrayerLog(data.prayerLog);
             if (data.lastModel)   setLastModel(data.lastModel);
             if (data.darkMode !== undefined) setDarkMode(data.darkMode);
+          } else {
+            // New user — start with empty boards, not sample data
+            setEntries({
+              praise: [], worship: [], petition: [], intercession: [],
+              confession: [], forgiveness: [], testimonies: [],
+            });
           }
           setDataLoading(false);
         }).catch(() => setDataLoading(false));
@@ -1804,6 +1818,33 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           setTestimonyNote("");
           setTestimonyPrompt({ sectionId, entry });
         }
+      };
+
+      const deleteEntry = (sectionId, id) => {
+        setEntries(prev => ({
+          ...prev,
+          [sectionId]: prev[sectionId].filter(e => e.id !== id)
+        }));
+      };
+
+      const startEdit = (sectionId, entry) => {
+        setEditingEntry({ sectionId, entry });
+        setEditText(entry.text);
+        setEditName(entry.name || "");
+      };
+
+      const saveEdit = () => {
+        if (!editingEntry || !editText.trim()) return;
+        const { sectionId, entry } = editingEntry;
+        setEntries(prev => ({
+          ...prev,
+          [sectionId]: prev[sectionId].map(e =>
+            e.id === entry.id ? { ...e, text: editText.trim(), name: editName.trim() || e.name, sample: false } : e
+          )
+        }));
+        setEditingEntry(null);
+        setEditText("");
+        setEditName("");
       };
 
       const addTestimony = () => {
@@ -2090,13 +2131,52 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               )}
 
               {active.map(e => (
-                <div key={e.id} style={{ background: C.white, borderRadius: 12, padding: "16px 18px", marginBottom: 10, display: "flex", gap: 14 }}>
-                  <div onClick={() => toggleDone(activeSection, e.id)} style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${C.paper}`, flexShrink: 0, marginTop: 2, cursor: "pointer" }} />
-                  <div>
-                    {activeSection === "intercession" && e.name && <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{e.name}</div>}
-                    <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{e.text}</div>
-                    <div style={{ fontSize: 11, color: C.stone, marginTop: 6 }}>Added {e.date}</div>
-                  </div>
+                <div key={e.id} style={{ background: C.card, borderRadius: 12, padding: "16px 18px", marginBottom: 10 }}>
+                  {editingEntry && editingEntry.entry.id === e.id ? (
+                    // Edit mode
+                    <div>
+                      {(activeSection === "intercession" || activeSection === "forgiveness") && (
+                        <input
+                          style={{ ...inputStyle, marginBottom: 8 }}
+                          value={editName}
+                          onChange={ev => setEditName(ev.target.value)}
+                          placeholder="Name"
+                        />
+                      )}
+                      <textarea
+                        style={{ ...inputStyle, height: 70, resize: "none", lineHeight: 1.6, marginBottom: 10 }}
+                        value={editText}
+                        onChange={ev => setEditText(ev.target.value)}
+                      />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={saveEdit} style={{ flex: 1, background: sec.color, color: "#FFF", border: "none", borderRadius: 8, padding: "10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Save</button>
+                        <button onClick={() => setEditingEntry(null)} style={{ flex: 1, background: "none", border: "1px solid " + C.paper, borderRadius: 8, padding: "10px", fontSize: 13, color: C.stone, cursor: "pointer" }}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    // View mode
+                    <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                      <div onClick={() => toggleDone(activeSection, e.id)} style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${C.paper}`, flexShrink: 0, marginTop: 2, cursor: "pointer" }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {(activeSection === "intercession" || activeSection === "forgiveness") && e.name && (
+                          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{e.name}</div>
+                        )}
+                        <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{e.text}</div>
+                        {e.sample && <div style={{ fontSize: 10, color: C.stone, marginTop: 4, fontStyle: "italic", opacity: 0.6 }}>Example — tap edit to make it yours</div>}
+                        <div style={{ fontSize: 11, color: C.stone, marginTop: 6 }}>Added {e.date}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        <button onClick={() => startEdit(activeSection, e)}
+                          style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 8, padding: "5px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
+                          Edit
+                        </button>
+                        <button onClick={() => deleteEntry(activeSection, e.id)}
+                          style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 8, padding: "5px 10px", fontSize: 11, color: "#E57373", cursor: "pointer" }}>
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -2106,14 +2186,18 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                     {activeSection === "confession" ? "Confessed" : activeSection === "praise" ? "Recorded" : "Answered"}
                   </div>
                   {done.map(e => (
-                    <div key={e.id} style={{ background: C.white, borderRadius: 12, padding: "16px 18px", marginBottom: 10, display: "flex", gap: 14, opacity: 0.5 }}>
+                    <div key={e.id} style={{ background: C.card, borderRadius: 12, padding: "16px 18px", marginBottom: 10, display: "flex", gap: 12, alignItems: "flex-start", opacity: 0.55 }}>
                       <div onClick={() => toggleDone(activeSection, e.id)} style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${sec.color}`, background: sec.color, flexShrink: 0, marginTop: 2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <span style={{ color: "white", fontSize: 11, fontWeight: 700 }}>✓</span>
                       </div>
-                      <div>
-                        {activeSection === "intercession" && e.name && <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, textDecoration: "line-through" }}>{e.name}</div>}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {(activeSection === "intercession" || activeSection === "forgiveness") && e.name && <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, textDecoration: "line-through" }}>{e.name}</div>}
                         <div style={{ fontSize: 13, color: C.stone, textDecoration: "line-through" }}>{e.text}</div>
                       </div>
+                      <button onClick={() => deleteEntry(activeSection, e.id)}
+                        style={{ background: "none", border: "none", fontSize: 14, color: C.stone, cursor: "pointer", flexShrink: 0, opacity: 0.6 }}>
+                        ✕
+                      </button>
                     </div>
                   ))}
                 </>
