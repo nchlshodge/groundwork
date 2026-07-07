@@ -1669,7 +1669,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       // ── App state ──
       const [tab, setTab]                   = useState("learn");
-      const [showHome, setShowHome]         = useState(true);
+      const [showHome, setShowHome]         = useState(false); // default false — Firestore decides
+      const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
       const [showSettings, setShowSettings] = useState(false);
       const [darkMode, setDarkMode]           = useState(null); // null = follow system
       const [prayerLog, setPrayerLog]         = useState([]);
@@ -1738,12 +1739,21 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             if (data.prayerLog)   setPrayerLog(data.prayerLog);
             if (data.lastModel)   setLastModel(data.lastModel);
             if (data.darkMode !== undefined) setDarkMode(data.darkMode);
+            if (data.hasSeenOnboarding) {
+              setHasSeenOnboarding(true);
+              setShowHome(false);
+              setTab("board");
+            } else {
+              // First time user — show onboarding
+              setShowHome(true);
+            }
           } else {
-            // New user — start with empty boards, not sample data
+            // Brand new user — start with empty boards and show onboarding
             setEntries({
               praise: [], worship: [], petition: [], intercession: [],
               confession: [], forgiveness: [], testimonies: [],
             });
+            setShowHome(true);
           }
           setDataLoading(false);
         }).catch(() => setDataLoading(false));
@@ -1754,7 +1764,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         if (!user || dataLoading) return;
         const ref = db.collection("users").doc(user.uid);
         const timer = setTimeout(() => {
-          ref.set({ entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode }, { merge: true });
+          ref.set({ entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding }, { merge: true });
         }, 1000);
         return () => clearTimeout(timer);
       }, [entries, segments, tabSegments, schedule, user]);
@@ -2692,13 +2702,19 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             </div>
 
             {/* CTA */}
-            <button onClick={() => setShowHome(false)}
+            <button onClick={() => {
+                setShowHome(false);
+                setHasSeenOnboarding(true);
+                setTab("board");
+              }}
               style={{ background: C.accent, color: C.white, border: "none", borderRadius: 14, padding: "18px 24px", fontSize: 16, fontWeight: 700, cursor: "pointer", width: "100%", letterSpacing: "-0.01em", marginBottom: 12 }}>
-              Get started
+              {hasSeenOnboarding ? "Back to app" : "Get started"}
             </button>
-            <div style={{ fontSize: 12, color: C.stone, textAlign: "center", lineHeight: 1.6 }}>
-              You can return to this page anytime from the menu.
-            </div>
+            {!hasSeenOnboarding && (
+              <div style={{ fontSize: 12, color: C.stone, textAlign: "center", lineHeight: 1.6 }}>
+                You can return to this page anytime from the ? button.
+              </div>
+            )}
           </div>
         </div>
       );
@@ -2719,8 +2735,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               {user && (
                 <img src={user.photoURL} alt="avatar" style={{ width: 32, height: 32, borderRadius: "50%", cursor: "pointer", border: `2px solid ${C.paper}` }} onClick={signOut} title="Sign out" />
               )}
-              <button onClick={() => { setShowSettings(false); setShowHome(true); }} style={{ background: C.paper, border: "none", borderRadius: 10, width: 38, height: 38, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0, marginBottom: 2 }}>
-                ⌂
+              <button onClick={() => { setShowSettings(false); setShowHome(true); }}
+                title="How it works"
+                style={{ background: C.paper, border: "none", borderRadius: 10, width: 38, height: 38, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0, marginBottom: 2 }}>
+                ?
               </button>
               <button onClick={() => setShowSettings(!showSettings)} style={{ background: showSettings ? C.accent : C.paper, border: "none", borderRadius: 10, width: 38, height: 38, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, marginBottom: 2 }}>
                 {showSettings ? "✕" : "⚙"}
