@@ -40,8 +40,22 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // ── REPLACE with your hosted .mp3 URL (S3, Cloudflare R2, etc.) ──────────
-    const MUSIC_URL = "beginning.mp3";
+    // ── Music playlist — rotates randomly, never repeats consecutively ─────────
+    const MUSIC_TRACKS = [
+      "beginning.mp3",
+      "Near.mp3",
+      "Nothing_to_Lose.mp3",
+      "Providence_Hope.mp3",
+    ];
+    let lastTrackIndex = -1;
+    const getNextTrack = () => {
+      let idx;
+      do { idx = Math.floor(Math.random() * MUSIC_TRACKS.length); }
+      while (idx === lastTrackIndex && MUSIC_TRACKS.length > 1);
+      lastTrackIndex = idx;
+      return MUSIC_TRACKS[idx];
+    };
+    const MUSIC_URL = MUSIC_TRACKS[0]; // fallback for PracticeTimer
 
     // ── Firebase Setup ────────────────────────────────────────────────────────
     const firebaseConfig = {
@@ -801,7 +815,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const intervalRef = useRef(null);
 
       useEffect(() => {
-        audioRef.current = new Audio(MUSIC_URL);
+        audioRef.current = new Audio(getNextTrack());
         audioRef.current.loop = true;
         audioRef.current.volume = 0.35;
         return () => { audioRef.current.pause(); clearInterval(intervalRef.current); };
@@ -974,9 +988,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const isLast = step === steps.length - 1;
       const notifiableEntries = (intercessionEntries || []).filter(e => !e.done);
 
-      // Set up audio
+      // Set up audio — picks a random track each session
       React.useEffect(() => {
-        audioRef.current = new Audio(MUSIC_URL);
+        audioRef.current = new Audio(getNextTrack());
         audioRef.current.loop = true;
         audioRef.current.volume = 0.3;
         return () => {
