@@ -74,17 +74,30 @@
       "Providence_Hope.mp3",
     ];
 
-    // Simple rotation using closure
-    const musicState = { lastIndex: -1 };
-    const getNextTrack = () => {
-      let idx;
-      do {
-        idx = Math.floor(Math.random() * MUSIC_TRACKS.length);
-      } while (idx === musicState.lastIndex && MUSIC_TRACKS.length > 1);
-      musicState.lastIndex = idx;
-      return MUSIC_TRACKS[idx];
+    // Shuffled queue — guarantees all 4 tracks play before repeating
+    const musicQueue = {
+      queue: [],
+      index: 0,
+      shuffle() {
+        // Fisher-Yates shuffle
+        const arr = [...MUSIC_TRACKS];
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        this.queue = arr;
+        this.index = 0;
+      },
+      next() {
+        if (this.queue.length === 0 || this.index >= this.queue.length) {
+          this.shuffle();
+        }
+        return this.queue[this.index++];
+      }
     };
+    musicQueue.shuffle(); // initial shuffle on load
 
+    const getNextTrack = () => musicQueue.next();
     const MUSIC_URL = MUSIC_TRACKS[0]; // fallback reference
 
     // ── Firebase Setup ────────────────────────────────────────────────────────
@@ -848,6 +861,15 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         audioRef.current = new Audio(getNextTrack());
         audioRef.current.loop = true;
         audioRef.current.volume = 0.35;
+        audioRef.current.addEventListener('ended', () => {
+          // Auto-advance to next track when not looping
+          if (!audioRef.current.loop) {
+            audioRef.current = new Audio(getNextTrack());
+            audioRef.current.loop = false;
+            audioRef.current.volume = 0.35;
+            audioRef.current.play().catch(() => {});
+          }
+        });
         return () => { audioRef.current.pause(); clearInterval(intervalRef.current); };
       }, []);
 
@@ -1076,6 +1098,14 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         audioRef.current = new Audio(getNextTrack());
         audioRef.current.loop = true;
         audioRef.current.volume = 0.3;
+        audioRef.current.addEventListener('ended', () => {
+          if (!audioRef.current.loop) {
+            audioRef.current = new Audio(getNextTrack());
+            audioRef.current.loop = false;
+            audioRef.current.volume = 0.3;
+            audioRef.current.play().catch(() => {});
+          }
+        });
         return () => {
           audioRef.current.pause();
           audioRef.current = null;
