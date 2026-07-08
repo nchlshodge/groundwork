@@ -1808,6 +1808,59 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       );
     }
 
+
+    // ── Board Prayer Screen ───────────────────────────────────────────────────
+    function BoardPrayerScreen({ entries, onClose, isDark }) {
+      const C2 = THEMES[isDark ? 'dark' : 'light'];
+
+      // Build steps from non-empty board sections
+      const SECTION_CONFIG = [
+        { id: "praise",       label: "Praise",       prompt: "Thank you God for...",          color: "#4A9E7F" },
+        { id: "worship",      label: "Worship",       prompt: "I worship you because...",      color: "#6B5FD6" },
+        { id: "petition",     label: "Petition",      prompt: "God, I'm asking for...",        color: "#5B8DD9" },
+        { id: "intercession", label: "Intercession",  prompt: "God, I pray for...",            color: "#B87333" },
+        { id: "confession",   label: "Confession",    prompt: "God, I confess...",             color: "#9E6B8A" },
+        { id: "forgiveness",  label: "Forgiveness",   prompt: "God, I choose to forgive...",   color: "#C0724A" },
+        { id: "testimonies",  label: "Testimonies",   prompt: "I remember what you did...",    color: "#4A9E7F" },
+      ];
+
+      const activeEntries = (key) => (entries[key] || []).filter(e => !e.done);
+
+      // Only include sections that have entries
+      const steps = SECTION_CONFIG
+        .filter(sec => activeEntries(sec.id).length > 0)
+        .map(sec => ({
+          title: sec.label,
+          subtitle: sec.prompt,
+          color: sec.color,
+          entries: activeEntries(sec.id),
+          shownKey: sec.id,
+        }));
+
+      if (steps.length === 0) return (
+        <div style={{ minHeight: "100vh", background: C2.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 5vw" }}>
+          <div style={{ fontSize: 40, marginBottom: 20 }}>🙏</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: C2.ink, marginBottom: 10, textAlign: "center" }}>Your board is empty</div>
+          <div style={{ fontSize: 14, color: C2.stone, textAlign: "center", lineHeight: 1.7, marginBottom: 30 }}>
+            Add some prayer requests to your board first — then come back to pray through them.
+          </div>
+          <button onClick={onClose}
+            style={{ background: C2.accent, color: "#FFF", border: "none", borderRadius: 12, padding: "14px 28px", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+            Go to board
+          </button>
+        </div>
+      );
+
+      return <StepPrayerShell
+        title="Prayer Board"
+        steps={steps}
+        onClose={onClose}
+        accentColor="#6B5FD6"
+        intercessionEntries={entries.intercession || []}
+        isDark={isDark}
+      />;
+    }
+
     // ── Main App ──────────────────────────────────────────────────────────────
     function App() {
       // ── Auth state ──
@@ -1828,6 +1881,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [showPsalms, setShowPsalms]         = useState(false);
       const [showDailyOffice, setShowDailyOffice] = useState(false);
       const [showMoreModels, setShowMoreModels]   = useState(false);
+      const [showBoardPrayer, setShowBoardPrayer] = useState(false);
+      const [inviteMsg, setInviteMsg]           = useState("Hey — I've been using an app called Groundwork to learn how to pray and I thought of you. It's not just a devotional — it actually teaches you how to pray using models like the Lord's Prayer and the Psalms. It's free and you can open it right from your phone. Here's the link: https://nchlshodge.github.io/groundwork/");
+      const [copied, setCopied]                 = useState(false);
       const [activeModule, setActiveModule] = useState("lords");
       const [tabSegments, setTabSegments]   = useState(TABERNACLE_SEGMENTS);
       const [schedule, setSchedule]         = useState({ freq: null, times: ["07:00"], customDays: [], duration: 30 });
@@ -2379,17 +2435,23 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase" }}>Prayer Board</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {/* Just pray through the board */}
+                <button onClick={() => setShowBoardPrayer(true)}
+                  style={{ background: C.sage, color: C.white, border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em" }}>
+                  🙏 Pray board
+                </button>
+                {/* Pray using a model */}
                 <button onClick={() => {
                   const m = lastModel || "";
                   if (!m || m === "The Lord's Prayer") { setShowPrayer(true); }
                   else if (m === "The Tabernacle Prayer") { setShowTabPrayer(true); }
                   else { setShowPsalms(true); }
-                }} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 20, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", letterSpacing: "0.04em" }}>
-                  {lastModel ? "Pray Now (" + lastModel.replace("The ", "").split(" ")[0] + ")" : "Pray Now"}
+                }} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em" }}>
+                  {lastModel ? lastModel.replace("The ", "").split(" ")[0] : "Model"}
                 </button>
                 <button onClick={() => setShowModelPicker(true)}
-                  style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 20, padding: "8px 14px", fontSize: 12, color: C.stone, cursor: "pointer", fontWeight: 500 }}>
-                  Change
+                  style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 20, padding: "8px 12px", fontSize: 12, color: C.stone, cursor: "pointer", fontWeight: 500 }}>
+                  ↕
                 </button>
               </div>
             </div>
@@ -2755,63 +2817,37 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 Send them a personal invite. The message is ready to go — edit it to make it yours before sending.
               </div>
 
-              {(() => {
-                const appUrl = "https://nchlshodge.github.io/groundwork/";
-                const defaultMsg = `Hey — I've been using an app called Groundwork to learn how to pray and I thought of you. It's not just a devotional — it actually teaches you how to pray using models like the Lord's Prayer and the Psalms. It's free and you can open it right from your phone. Here's the link: ${appUrl}`;
-
-                const [inviteMsg, setInviteMsg] = React.useState(defaultMsg);
-                const [copied, setCopied] = React.useState(false);
-
-                const sendSMS = () => {
-                  window.open(`sms:?body=${encodeURIComponent(inviteMsg)}`, "_blank");
-                };
-
-                const sendEmail = () => {
-                  const subject = encodeURIComponent("I thought of you — Groundwork prayer app");
-                  window.open(`mailto:?subject=${subject}&body=${encodeURIComponent(inviteMsg)}`, "_blank");
-                };
-
-                const copyLink = () => {
-                  navigator.clipboard.writeText(inviteMsg).then(() => {
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }).catch(() => {
-                    // Fallback for devices without clipboard API
-                    const el = document.createElement("textarea");
-                    el.value = inviteMsg;
-                    document.body.appendChild(el);
-                    el.select();
-                    document.execCommand("copy");
-                    document.body.removeChild(el);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  });
-                };
-
-                return (
-                  <div>
-                    <textarea
-                      value={inviteMsg}
-                      onChange={e => setInviteMsg(e.target.value)}
-                      style={{ ...inputStyle, minHeight: 120, resize: "none", lineHeight: 1.65, marginBottom: 14 }}
-                    />
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={sendSMS}
-                        style={{ flex: 1, background: C.sage, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                        💬 Text
-                      </button>
-                      <button onClick={sendEmail}
-                        style={{ flex: 1, background: C.accent, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                        ✉ Email
-                      </button>
-                      <button onClick={copyLink}
-                        style={{ flex: 1, background: copied ? C.sage : "none", color: copied ? "#FFFFFF" : C.stone, border: `1px solid ${C.paper}`, borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
-                        {copied ? "Copied ✓" : "Copy"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
+              <div>
+                <textarea
+                  value={inviteMsg}
+                  onChange={e => setInviteMsg(e.target.value)}
+                  style={{ ...inputStyle, minHeight: 120, resize: "none", lineHeight: 1.65, marginBottom: 14 }}
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => window.open("sms:?body=" + encodeURIComponent(inviteMsg), "_blank")}
+                    style={{ flex: 1, background: C.sage, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    💬 Text
+                  </button>
+                  <button onClick={() => window.open("mailto:?subject=" + encodeURIComponent("I thought of you — Groundwork prayer app") + "&body=" + encodeURIComponent(inviteMsg), "_blank")}
+                    style={{ flex: 1, background: C.accent, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    ✉ Email
+                  </button>
+                  <button onClick={() => {
+                      navigator.clipboard.writeText(inviteMsg).then(() => {
+                        setCopied(true); setTimeout(() => setCopied(false), 2000);
+                      }).catch(() => {
+                        const el = document.createElement("textarea");
+                        el.value = inviteMsg; document.body.appendChild(el);
+                        el.select(); document.execCommand("copy");
+                        document.body.removeChild(el);
+                        setCopied(true); setTimeout(() => setCopied(false), 2000);
+                      });
+                    }}
+                    style={{ flex: 1, background: copied ? C.sage : "transparent", color: copied ? "#FFFFFF" : C.stone, border: "1px solid " + C.paper, borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
+                    {copied ? "Copied ✓" : "Copy"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2971,11 +3007,13 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           {/* Nav */}
           <nav style={{ display: "flex", borderBottom: `1px solid ${C.paper}`, background: C.bg, position: "sticky", top: 0, zIndex: 10 }}>
             {[["learn","Learn"],["board","Board"],["fast","Fast"]].map(([id, label]) => (
-              <button key={id} style={navBtn(tab === id)} onClick={() => { setTab(id); setShowHome(false); setShowSettings(false); setShowTabPrayer(false); setShowPrayer(false); setShowPsalms(false); setShowModelPicker(false); setShowMoreModels(false); setShowDailyOffice(false); }}>{label}</button>
+              <button key={id} style={navBtn(tab === id)} onClick={() => { setTab(id); setShowHome(false); setShowSettings(false); setShowTabPrayer(false); setShowPrayer(false); setShowPsalms(false); setShowModelPicker(false); setShowMoreModels(false); setShowDailyOffice(false); setShowBoardPrayer(false); }}>{label}</button>
             ))}
           </nav>
 
-          {showHome ? renderHome() : showSettings ? renderSettings() : showMoreModels ? (
+          {showHome ? renderHome() : showBoardPrayer ? (
+            <BoardPrayerScreen entries={entries} onClose={() => setShowBoardPrayer(false)} isDark={isDark} />
+          ) : showSettings ? renderSettings() : showMoreModels ? (
             <MoreModelsScreen onClose={() => setShowMoreModels(false)} onOpenDailyOffice={() => { setShowMoreModels(false); setShowDailyOffice(true); }} isDark={isDark} />
           ) : showDailyOffice ? (
             <DailyOfficeScreen onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowDailyOffice(false); }} isDark={isDark} />
