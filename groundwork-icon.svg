@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" style="background:#1A1740">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2D2A5E"/>
+      <stop offset="100%" stop-color="#1A1740"/>
+    </linearGradient>
+    <linearGradient id="rightPageGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7C6FE8"/>
+      <stop offset="100%" stop-color="#5B4FC4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Full bleed background — no white gaps -->
+  <rect width="1024" height="1024" fill="#1A1740"/>
+  <!-- App icon background — rounded square -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bgGrad)"/>
+
+  <!-- Left page — scaled up from logo, centered -->
+  <path d="M248 750 L248 346 Q248 322 272 314 L490 274 L490 694 Q398 710 312 730 Z"
+    fill="#F0F2F8" opacity="0.95"/>
+
+  <!-- Right page -->
+  <path d="M776 750 L776 346 Q776 322 752 314 L534 274 L534 694 Q626 710 712 730 Z"
+    fill="url(#rightPageGrad)"/>
+
+  <!-- Book spine -->
+  <rect x="506" y="274" width="14" height="420" rx="7" fill="#F0F2F8" opacity="0.9"/>
+
+  <!-- Base line -->
+  <rect x="234" y="750" width="556" height="14" rx="7" fill="#F0F2F8" opacity="0.25"/>
+
+  <!-- Cross — vertical beam -->
+  <rect x="506" y="134" width="14" height="148" rx="7" fill="#7C6FE8"/>
+
+  <!-- Cross — horizontal beam -->
+  <rect x="440" y="182" width="146" height="14" rx="7" fill="#7C6FE8"/>
+
+  <!-- Glow behind cross -->
+  <ellipse cx="513" cy="196" rx="90" ry="45" fill="#7C6FE8" opacity="0.2"/>
+</svg>
