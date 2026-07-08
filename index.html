@@ -2558,6 +2558,46 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 </div>
               );
             })}
+
+            {/* Data safety note + export */}
+            <div style={{ background: C.card, borderRadius: 14, padding: "16px 18px", marginTop: 8, border: "1px solid " + C.paper }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>🔒</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 3 }}>Your board is saved to your account</div>
+                  <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.6 }}>
+                    Everything you add here is saved to Firebase and tied to your Google account. It will be here every time you sign in, on any device.
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => {
+                // Build a plain text export of all board entries
+                const lines = ["GROUNDWORK — PRAYER BOARD EXPORT", "Generated: " + new Date().toLocaleDateString(), ""];
+                SECTIONS.forEach(sec => {
+                  const items = (entries[sec.id] || []);
+                  if (items.length === 0) return;
+                  lines.push("── " + sec.label.toUpperCase() + " ──");
+                  items.forEach(e => {
+                    const name = e.name ? e.name + " — " : "";
+                    const status = e.done ? " [answered]" : "";
+                    lines.push("• " + name + e.text + status);
+                    if (e.note) lines.push("  Note: " + e.note);
+                  });
+                  lines.push("");
+                });
+                const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "groundwork-prayer-board.txt";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+                style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 10, padding: "10px 16px", fontSize: 12, color: C.stone, cursor: "pointer", width: "100%", fontWeight: 500 }}>
+                ↓ Download a backup copy
+              </button>
+            </div>
+
           </div>
         );
       };
