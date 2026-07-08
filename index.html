@@ -851,6 +851,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         return () => { audioRef.current.pause(); clearInterval(intervalRef.current); };
       }, []);
 
+      const [looping, setLooping] = useState(true);
+
       const toggleMusic = () => {
         if (!audioRef.current) return;
         if (musicOn) {
@@ -861,9 +863,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           if (playPromise !== undefined) {
             playPromise.then(() => setMusicOn(true)).catch(err => {
               console.warn('Music play failed:', err);
-              // Try creating a fresh audio instance on user gesture
               audioRef.current = new Audio(getNextTrack());
-              audioRef.current.loop = true;
+              audioRef.current.loop = looping;
               audioRef.current.volume = 0.35;
               audioRef.current.play().then(() => setMusicOn(true)).catch(() => {});
             });
@@ -871,6 +872,22 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             setMusicOn(true);
           }
         }
+      };
+
+      const skipTrack = () => {
+        if (!audioRef.current) return;
+        const wasPlaying = musicOn;
+        audioRef.current.pause();
+        audioRef.current = new Audio(getNextTrack());
+        audioRef.current.loop = looping;
+        audioRef.current.volume = 0.35;
+        if (wasPlaying) audioRef.current.play().then(() => setMusicOn(true)).catch(() => {});
+      };
+
+      const toggleLoop = () => {
+        const newLoop = !looping;
+        setLooping(newLoop);
+        if (audioRef.current) audioRef.current.loop = newLoop;
       };
 
       const startTimer = () => {
@@ -956,9 +973,23 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   Go again
                 </button>
               )}
-              <button onClick={toggleMusic} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${musicOn ? C.accent : "rgba(255,255,255,0.1)"}`, borderRadius: 10, padding: "10px 0", fontSize: 12, color: musicOn ? C.accent : "rgba(255,255,255,0.45)", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 500 }}>
-                {musicOn ? "♪ Music on" : "♪ Play music"}
-              </button>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={toggleMusic} style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid " + (musicOn ? C.accent : "rgba(255,255,255,0.1)"), borderRadius: 10, padding: "10px 0", fontSize: 12, color: musicOn ? C.accent : "rgba(255,255,255,0.45)", cursor: "pointer", fontWeight: 500 }}>
+                  {musicOn ? "♪ On" : "♪ Off"}
+                </button>
+                {musicOn && (
+                  <>
+                    <button onClick={skipTrack} title="Next track"
+                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "rgba(255,255,255,0.55)", cursor: "pointer" }}>
+                      ⏭
+                    </button>
+                    <button onClick={toggleLoop} title={looping ? "Repeat on" : "Repeat off"}
+                      style={{ background: looping ? "rgba(107,95,214,0.3)" : "rgba(255,255,255,0.06)", border: "1px solid " + (looping ? C.accent : "rgba(255,255,255,0.1)"), borderRadius: 10, padding: "10px 12px", fontSize: 12, color: looping ? C.accent : "rgba(255,255,255,0.45)", cursor: "pointer" }}>
+                      🔁
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1051,6 +1082,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         };
       }, []);
 
+      const [looping, setLooping] = React.useState(true);
+
       const toggleMusic = () => {
         if (!audioRef.current) return;
         if (musicOn) {
@@ -1061,9 +1094,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           if (playPromise !== undefined) {
             playPromise.then(() => setMusicOn(true)).catch(err => {
               console.warn('Music play failed:', err);
-              // Recreate audio on user gesture
               audioRef.current = new Audio(getNextTrack());
-              audioRef.current.loop = true;
+              audioRef.current.loop = looping;
               audioRef.current.volume = 0.3;
               audioRef.current.play().then(() => setMusicOn(true)).catch(() => {});
             });
@@ -1071,6 +1103,22 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             setMusicOn(true);
           }
         }
+      };
+
+      const skipTrack = () => {
+        if (!audioRef.current) return;
+        const wasPlaying = musicOn;
+        audioRef.current.pause();
+        audioRef.current = new Audio(getNextTrack());
+        audioRef.current.loop = looping;
+        audioRef.current.volume = 0.3;
+        if (wasPlaying) audioRef.current.play().then(() => setMusicOn(true)).catch(() => {});
+      };
+
+      const toggleLoop = () => {
+        const newLoop = !looping;
+        setLooping(newLoop);
+        if (audioRef.current) audioRef.current.loop = newLoop;
       };
 
       // Stop music when Amen / notify screen opens
@@ -1230,17 +1278,24 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           <div style={{ padding: "52px 5vw 16px", background: shellBg, borderBottom: "1px solid " + shellBorder }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: color, cursor: "pointer", padding: "0 0 12px 0", fontWeight: 500 }}>← Back</button>
-              <button onClick={toggleMusic} style={{
-                background: musicOn ? accentColor : "transparent",
-                border: "1px solid " + (musicOn ? accentColor : shellBorder),
-                borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600,
-                color: musicOn ? "#FFFFFF" : shellSubtext, cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 5, transition: "all 0.2s",
-                marginBottom: 12,
-              }}>
-                <span style={{ fontSize: 14 }}>{musicOn ? "♪" : "♩"}</span>
-                {musicOn ? "Music on" : "Music off"}
-              </button>
+              <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                <button onClick={toggleMusic} style={{ background: musicOn ? accentColor : "transparent", border: "1px solid " + (musicOn ? accentColor : shellBorder), borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600, color: musicOn ? "#FFFFFF" : shellSubtext, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, transition: "all 0.2s" }}>
+                  <span style={{ fontSize: 13 }}>{musicOn ? "♪" : "♩"}</span>
+                  {musicOn ? "On" : "Off"}
+                </button>
+                {musicOn && (
+                  <>
+                    <button onClick={skipTrack} title="Next track"
+                      style={{ background: "transparent", border: "1px solid " + shellBorder, borderRadius: 20, padding: "6px 12px", fontSize: 13, color: shellSubtext, cursor: "pointer" }}>
+                      ⏭
+                    </button>
+                    <button onClick={toggleLoop} title={looping ? "Repeat on" : "Repeat off"}
+                      style={{ background: looping ? accentColor + "30" : "transparent", border: "1px solid " + (looping ? accentColor : shellBorder), borderRadius: 20, padding: "6px 12px", fontSize: 12, color: looping ? accentColor : shellSubtext, cursor: "pointer" }}>
+                      🔁
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: shellSubtext, textTransform: "uppercase", marginBottom: 4 }}>Guided Prayer</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: shellText, letterSpacing: "-0.02em" }}>{title}</div>
