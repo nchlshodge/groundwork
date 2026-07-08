@@ -47,15 +47,19 @@
       "Nothing_to_Lose.mp3",
       "Providence_Hope.mp3",
     ];
-    let lastTrackIndex = -1;
+
+    // Simple rotation using closure
+    const musicState = { lastIndex: -1 };
     const getNextTrack = () => {
       let idx;
-      do { idx = Math.floor(Math.random() * MUSIC_TRACKS.length); }
-      while (idx === lastTrackIndex && MUSIC_TRACKS.length > 1);
-      lastTrackIndex = idx;
+      do {
+        idx = Math.floor(Math.random() * MUSIC_TRACKS.length);
+      } while (idx === musicState.lastIndex && MUSIC_TRACKS.length > 1);
+      musicState.lastIndex = idx;
       return MUSIC_TRACKS[idx];
     };
-    const MUSIC_URL = MUSIC_TRACKS[0]; // fallback for PracticeTimer
+
+    const MUSIC_URL = MUSIC_TRACKS[0]; // fallback reference
 
     // ── Firebase Setup ────────────────────────────────────────────────────────
     const firebaseConfig = {
@@ -822,21 +826,43 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       }, []);
 
       const toggleMusic = () => {
-        if (musicOn) { audioRef.current.pause(); setMusicOn(false); }
-        else { audioRef.current.play().catch(() => {}); setMusicOn(true); }
+        if (!audioRef.current) return;
+        if (musicOn) {
+          audioRef.current.pause();
+          setMusicOn(false);
+        } else {
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => setMusicOn(true)).catch(err => {
+              console.warn('Music play failed:', err);
+              // Try creating a fresh audio instance on user gesture
+              audioRef.current = new Audio(getNextTrack());
+              audioRef.current.loop = true;
+              audioRef.current.volume = 0.35;
+              audioRef.current.play().then(() => setMusicOn(true)).catch(() => {});
+            });
+          } else {
+            setMusicOn(true);
+          }
+        }
       };
 
       const startTimer = () => {
         setState("running");
         setSeconds(60);
-        audioRef.current.play().catch(() => {});
-        setMusicOn(true);
+        // Play music on user gesture — most reliable trigger
+        if (audioRef.current) {
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => setMusicOn(true)).catch(() => {});
+          }
+        }
         intervalRef.current = setInterval(() => {
           setSeconds(prev => {
             if (prev <= 1) {
               clearInterval(intervalRef.current);
               setState("done");
-              audioRef.current.pause();
+              if (audioRef.current) audioRef.current.pause();
               setMusicOn(false);
               return 0;
             }
@@ -1005,8 +1031,19 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           audioRef.current.pause();
           setMusicOn(false);
         } else {
-          audioRef.current.play().catch(() => {});
-          setMusicOn(true);
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => setMusicOn(true)).catch(err => {
+              console.warn('Music play failed:', err);
+              // Recreate audio on user gesture
+              audioRef.current = new Audio(getNextTrack());
+              audioRef.current.loop = true;
+              audioRef.current.volume = 0.3;
+              audioRef.current.play().then(() => setMusicOn(true)).catch(() => {});
+            });
+          } else {
+            setMusicOn(true);
+          }
         }
       };
 
@@ -1675,6 +1712,76 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       );
     }
 
+
+    // ── More Models Screen ────────────────────────────────────────────────────
+    function MoreModelsScreen({ onClose, onOpenDailyOffice, isDark }) {
+      const C2 = THEMES[isDark ? 'dark' : 'light'];
+      return (
+        <div style={{ minHeight: "100vh", background: C2.bg }}>
+          <div style={{ padding: "52px 5vw 20px", borderBottom: "1px solid " + C2.paper, background: C2.bg }}>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: C2.accent, cursor: "pointer", padding: "0 0 12px 0", fontWeight: 500 }}>← Back</button>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: C2.stone, textTransform: "uppercase", marginBottom: 4 }}>More Models</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C2.ink, letterSpacing: "-0.02em" }}>Explore more ways to pray</div>
+          </div>
+
+          <div style={{ padding: "24px 5vw", maxWidth: 600, margin: "0 auto" }}>
+            <div style={{ fontSize: 13, color: C2.stone, lineHeight: 1.7, marginBottom: 28 }}>
+              As you grow in your prayer life, new models open up. Each one adds a different dimension — rhythm, depth, or a new posture before God.
+            </div>
+
+            {/* Daily Office */}
+            <div style={{ background: C2.card, borderRadius: 16, padding: "20px", marginBottom: 14, border: "1px solid " + C2.paper }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: "#4A9E7F22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>🕐</div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: C2.ink, marginBottom: 2 }}>The Daily Office</div>
+                  <div style={{ fontSize: 12, color: C2.stone }}>Fixed-hour prayer · 4 offices</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: isDark ? "#C8CEDD" : "#2C3347", lineHeight: 1.7, marginBottom: 16 }}>
+                The Daily Office is the ancient practice of pausing at set times throughout the day — morning, midday, evening, and night — to turn toward God. It builds a rhythm that keeps you oriented toward Him no matter what the day brings.
+              </div>
+              <div style={{ background: "#4A9E7F15", borderLeft: "3px solid #4A9E7F", borderRadius: "0 8px 8px 0", padding: "10px 14px", marginBottom: 16 }}>
+                <div style={{ fontSize: 12, color: "#4A9E7F", fontWeight: 600, marginBottom: 2 }}>Daniel 6:10</div>
+                <div style={{ fontSize: 12, color: isDark ? "#C8CEDD" : "#2C3347", lineHeight: 1.6, fontStyle: "italic" }}>"He got down on his knees three times a day and prayed and gave thanks before his God."</div>
+              </div>
+              <button onClick={onOpenDailyOffice}
+                style={{ background: "#4A9E7F", color: "#FFFFFF", border: "none", borderRadius: 10, padding: "13px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%" }}>
+                Open The Daily Office
+              </button>
+            </div>
+
+            {/* Coming soon placeholder */}
+            <div style={{ background: C2.card, borderRadius: 16, padding: "20px", marginBottom: 14, border: "1px solid " + C2.paper, opacity: 0.6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: "#6B5FD622", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>✉</div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: C2.ink, marginBottom: 2 }}>Praying Paul's Prayers</div>
+                  <div style={{ fontSize: 12, color: C2.stone }}>Coming soon</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: C2.stone, lineHeight: 1.6 }}>
+                Pray through Paul's intercessions from Ephesians, Philippians, and Colossians. Deep, specific, theologically rich prayer for the people you love.
+              </div>
+            </div>
+
+            <div style={{ background: C2.card, borderRadius: 16, padding: "20px", border: "1px solid " + C2.paper, opacity: 0.6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: "#B8733322", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>🛡</div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: C2.ink, marginBottom: 2 }}>Praying the Armor of God</div>
+                  <div style={{ fontSize: 12, color: C2.stone }}>Coming soon</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: C2.stone, lineHeight: 1.6 }}>
+                Pray through Ephesians 6 — truth, righteousness, peace, faith, salvation, the Word. Spiritual preparation as a daily practice.
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // ── Main App ──────────────────────────────────────────────────────────────
     function App() {
       // ── Auth state ──
@@ -1692,8 +1799,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [showModelPicker, setShowModelPicker] = useState(false);
       const [lastModel, setLastModel]       = useState(null);
       const [showTabPrayer, setShowTabPrayer] = useState(false);
-      const [showDailyOffice, setShowDailyOffice] = useState(false);
       const [showPsalms, setShowPsalms]         = useState(false);
+      const [showDailyOffice, setShowDailyOffice] = useState(false);
+      const [showMoreModels, setShowMoreModels]   = useState(false);
       const [activeModule, setActiveModule] = useState("lords");
       const [tabSegments, setTabSegments]   = useState(TABERNACLE_SEGMENTS);
       const [schedule, setSchedule]         = useState({ freq: null, times: ["07:00"], customDays: [], duration: 30 });
@@ -1781,7 +1889,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           ref.set({ entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding }, { merge: true });
         }, 1000);
         return () => clearTimeout(timer);
-      }, [entries, segments, tabSegments, schedule, user]);
+      }, [entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding, user]);
 
       const signOut = () => auth.signOut();
 
@@ -1986,12 +2094,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 2</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>The Tabernacle Prayer</div>
               </div>
-              <div onClick={() => setShowDailyOffice(true)} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 3</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>The Daily Office</div>
-              </div>
               <div onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 4</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 3</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Praying the Psalms</div>
               </div>
             </div>
@@ -2043,6 +2147,21 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 "Our Father in heaven, hallowed be your name. Your kingdom come, your will be done, on earth as it is in heaven. Give us this day our daily bread, and forgive us our debts, as we also have forgiven our debtors. And lead us not into temptation, but deliver us from evil. For yours is the kingdom and the power and the glory, forever. Amen."
               </div>
             </div>
+
+            {/* More Models */}
+            <div style={{ marginTop: 28 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 14 }}>More models</div>
+              <div onClick={() => setShowMoreModels(true)}
+                style={{ background: C.card, borderRadius: 14, padding: "18px 20px", cursor: "pointer", border: `1px solid ${C.paper}`, display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "#4A9E7F22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>+</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 3 }}>Explore more ways to pray</div>
+                  <div style={{ fontSize: 12, color: C.stone }}>Additional prayer models — unlock new practices as you grow.</div>
+                </div>
+                <div style={{ fontSize: 18, color: C.stone }}>›</div>
+              </div>
+            </div>
+
           </div>
         );
 
@@ -2060,12 +2179,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 2</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.white }}>The Tabernacle Prayer</div>
               </div>
-              <div onClick={() => setShowDailyOffice(true)} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 3</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>The Daily Office</div>
-              </div>
               <div onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 4</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 3</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Praying the Psalms</div>
               </div>
             </div>
@@ -2242,7 +2357,6 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   const m = lastModel || "";
                   if (!m || m === "The Lord's Prayer") { setShowPrayer(true); }
                   else if (m === "The Tabernacle Prayer") { setShowTabPrayer(true); }
-                  else if (m.includes("Office") || m.includes("Morning") || m.includes("Evening") || m.includes("Midday") || m.includes("Night")) { setShowDailyOffice(true); }
                   else { setShowPsalms(true); }
                 }} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 20, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer", letterSpacing: "0.04em" }}>
                   {lastModel ? "Pray Now (" + lastModel.replace("The ", "").split(" ")[0] + ")" : "Pray Now"}
@@ -2606,6 +2720,75 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             })()}
           </div>
 
+          {/* Invite a friend */}
+          <div style={{ marginTop: 32 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 14 }}>Invite someone</div>
+            <div style={{ background: C.card, borderRadius: 16, padding: "20px" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 8 }}>Know someone who needs this?</div>
+              <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.65, marginBottom: 16 }}>
+                Send them a personal invite. The message is ready to go — edit it to make it yours before sending.
+              </div>
+
+              {(() => {
+                const appUrl = "https://nchlshodge.github.io/groundwork/";
+                const defaultMsg = `Hey — I've been using an app called Groundwork to learn how to pray and I thought of you. It's not just a devotional — it actually teaches you how to pray using models like the Lord's Prayer and the Psalms. It's free and you can open it right from your phone. Here's the link: ${appUrl}`;
+
+                const [inviteMsg, setInviteMsg] = React.useState(defaultMsg);
+                const [copied, setCopied] = React.useState(false);
+
+                const sendSMS = () => {
+                  window.open(`sms:?body=${encodeURIComponent(inviteMsg)}`, "_blank");
+                };
+
+                const sendEmail = () => {
+                  const subject = encodeURIComponent("I thought of you — Groundwork prayer app");
+                  window.open(`mailto:?subject=${subject}&body=${encodeURIComponent(inviteMsg)}`, "_blank");
+                };
+
+                const copyLink = () => {
+                  navigator.clipboard.writeText(inviteMsg).then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }).catch(() => {
+                    // Fallback for devices without clipboard API
+                    const el = document.createElement("textarea");
+                    el.value = inviteMsg;
+                    document.body.appendChild(el);
+                    el.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(el);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  });
+                };
+
+                return (
+                  <div>
+                    <textarea
+                      value={inviteMsg}
+                      onChange={e => setInviteMsg(e.target.value)}
+                      style={{ ...inputStyle, minHeight: 120, resize: "none", lineHeight: 1.65, marginBottom: 14 }}
+                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={sendSMS}
+                        style={{ flex: 1, background: C.sage, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                        💬 Text
+                      </button>
+                      <button onClick={sendEmail}
+                        style={{ flex: 1, background: C.accent, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                        ✉ Email
+                      </button>
+                      <button onClick={copyLink}
+                        style={{ flex: 1, background: copied ? C.sage : "none", color: copied ? "#FFFFFF" : C.stone, border: `1px solid ${C.paper}`, borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
+                        {copied ? "Copied ✓" : "Copy"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
           </div>
         );
       };
@@ -2642,13 +2825,12 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             </div>
 
             {/* The three models */}
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 14 }}>Four models of prayer</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 14 }}>Three models of prayer</div>
 
             {[
               { color: C.accent,   num: "01", title: "The Lord's Prayer",    body: "Jesus' own model for how to approach God — from worship to provision to forgiveness. The foundation." },
               { color: "#B87333",  num: "02", title: "The Tabernacle Prayer", body: "A journey through the Old Testament Tabernacle as a map for going deeper into God's presence." },
-              { color: "#4A9E7F",  num: "03", title: "The Daily Office",      body: "Fixed-hour prayer — morning, midday, evening, and night — building a rhythm that keeps you oriented toward God all day." },
-              { color: "#3D7EB0",  num: "04", title: "Praying the Psalms",    body: "The prayer book of the Bible. Five types of prayer — praise, lament, penitence, trust, and thanksgiving — covering the full range of human experience." },
+              { color: "#3D7EB0",  num: "03", title: "Praying the Psalms",    body: "The prayer book of the Bible. Five types of prayer — praise, lament, penitence, trust, and thanksgiving — covering the full range of human experience." },
             ].map(m => (
               <div key={m.num} style={{ background: C.white, borderRadius: 14, padding: "18px 20px", marginBottom: 10, display: "flex", gap: 14, alignItems: "flex-start" }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: m.color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -2681,7 +2863,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   num: "2",
                   color: C.accent,
                   title: "Choose a model",
-                  body: "Pick any of the four prayer models. Each one is a different way of approaching God — the Lord's Prayer, the Tabernacle, the Daily Office, or the Psalms.",
+                  body: "Pick any of the three prayer models. Each one is a different way of approaching God — the Lord's Prayer, the Tabernacle, or the Psalms.",
                 },
                 {
                   num: "3",
@@ -2763,14 +2945,16 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           {/* Nav */}
           <nav style={{ display: "flex", borderBottom: `1px solid ${C.paper}`, background: C.bg, position: "sticky", top: 0, zIndex: 10 }}>
             {[["learn","Learn"],["board","Board"],["fast","Fast"]].map(([id, label]) => (
-              <button key={id} style={navBtn(tab === id)} onClick={() => { setTab(id); setShowHome(false); setShowSettings(false); setShowDailyOffice(false); setShowTabPrayer(false); setShowPrayer(false); setShowPsalms(false); setShowModelPicker(false); }}>{label}</button>
+              <button key={id} style={navBtn(tab === id)} onClick={() => { setTab(id); setShowHome(false); setShowSettings(false); setShowTabPrayer(false); setShowPrayer(false); setShowPsalms(false); setShowModelPicker(false); setShowMoreModels(false); setShowDailyOffice(false); }}>{label}</button>
             ))}
           </nav>
 
-          {showHome ? renderHome() : showSettings ? renderSettings() : showPsalms ? (
-            <PsalmsModelScreen entries={entries} onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowPsalms(false); }} isDark={isDark} />
+          {showHome ? renderHome() : showSettings ? renderSettings() : showMoreModels ? (
+            <MoreModelsScreen onClose={() => setShowMoreModels(false)} onOpenDailyOffice={() => { setShowMoreModels(false); setShowDailyOffice(true); }} isDark={isDark} />
           ) : showDailyOffice ? (
             <DailyOfficeScreen onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowDailyOffice(false); }} isDark={isDark} />
+          ) : showPsalms ? (
+            <PsalmsModelScreen entries={entries} onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowPsalms(false); }} isDark={isDark} />
           ) : showTabPrayer ? (
             <TabernaclePrayerScreen entries={entries} onClose={() => { logPrayer("The Tabernacle Prayer"); setShowTabPrayer(false); }} isDark={isDark} />
           ) : showPrayer ? (
@@ -2826,7 +3010,6 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 {[
                   { label: "The Lord's Prayer", sub: "Jesus' model for approaching God", color: C.accent, fn: () => { setShowModelPicker(false); setShowPrayer(true); } },
                   { label: "The Tabernacle Prayer", sub: "A journey deeper into His presence", color: "#B87333", fn: () => { setShowModelPicker(false); setShowTabPrayer(true); } },
-                  { label: "The Daily Office", sub: "Fixed-hour prayer for today", color: "#4A9E7F", fn: () => { setShowModelPicker(false); setShowDailyOffice(true); } },
                   { label: "Praying the Psalms", sub: "Honest prayer through every posture", color: "#3D7EB0", fn: () => { setShowModelPicker(false); setShowPsalms(true); } },
                 ].map((m, i) => (
                   <div key={i} onClick={m.fn}
