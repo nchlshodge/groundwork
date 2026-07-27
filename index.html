@@ -100,6 +100,67 @@
     const getNextTrack = () => musicQueue.next();
     const MUSIC_URL = MUSIC_TRACKS[0]; // fallback reference
 
+
+    // ── Sequential prayer notification messages ───────────────────────────────
+    const PRAYER_MESSAGES = [
+      // 1 — Warm, simple
+      (name) => `Hey ${name} — I prayed for you today. Just wanted you to know you weren't forgotten.`,
+
+      // 2 — Scripture: Philippians 4:6-7
+      (name) => `Hey ${name} — I was praying for you today and this came to mind: "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus." — Philippians 4:6-7. I brought your situation before God. You are covered.`,
+
+      // 3 — Warm, standing with them
+      (name) => `${name} — I stood in the gap for you today. Whatever you're carrying right now, you don't have to carry it alone. I'm with you and God is with you.`,
+
+      // 4 — Scripture: Isaiah 41:10
+      (name) => `Hey ${name} — praying for you today. "Do not fear, for I am with you; do not be dismayed, for I am your God. I will strengthen you and help you; I will uphold you with my righteous right hand." — Isaiah 41:10. He's got you.`,
+
+      // 5 — Short and powerful
+      (name) => `${name} — you came to my mind during prayer today. God sees you. He hasn't forgotten you. Hold on.`,
+
+      // 6 — Scripture: Psalm 34:18
+      (name) => `Hey ${name} — I prayed for you today. I don't know exactly what you're going through, but God does. "The Lord is close to the brokenhearted and saves those who are crushed in spirit." — Psalm 34:18. You are not alone in this.`,
+
+      // 7 — Warm, full paragraph
+      (name) => `${name} — I want you to know that I took time today to bring you before God. I didn't just mention your name — I actually sat with your situation and asked Him to move. I believe He is working even when it doesn't feel like it. Keep going.`,
+
+      // 8 — Scripture: Jeremiah 29:11
+      (name) => `Hey ${name} — praying for you today. "For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, plans to give you hope and a future." — Jeremiah 29:11. Whatever this season looks like, God hasn't lost the plan for your life.`,
+
+      // 9 — Short, warm
+      (name) => `${name} — you were on my heart during prayer today. I'm believing with you and for you.`,
+
+      // 10 — Scripture: Romans 8:28
+      (name) => `Hey ${name} — I prayed for you today. This verse kept coming back to me: "And we know that in all things God works for the good of those who love him." — Romans 8:28. All things. Even the hard ones. I'm trusting that with you.`,
+
+      // 11 — Warm, encouraging
+      (name) => `${name} — I prayed for you today. I want you to hear this: you are seen, you are loved, and what you're going through matters to God. It matters to me too. I'm in your corner.`,
+
+      // 12 — Scripture: Lamentations 3:22-23
+      (name) => `Hey ${name} — I was praying for you this morning. "The steadfast love of the Lord never ceases; his mercies never come to an end; they are new every morning; great is your faithfulness." — Lamentations 3:22-23. New mercies are available to you today. I prayed you'd find them.`,
+
+      // 13 — Short, direct
+      (name) => `${name} — prayed for you today. Not because I had to. Because I wanted to. You matter.`,
+
+      // 14 — Scripture: 1 Peter 5:7
+      (name) => `Hey ${name} — I brought you before God today. He says to cast all your anxiety on Him because He cares for you. — 1 Peter 5:7. I prayed you'd feel that today — that He actually cares. Not in a general way. Specifically, about you and what you're walking through.`,
+
+      // 15 — Warm, full
+      (name) => `${name} — I want you to know that prayer isn't just something I do for you in passing. Today I actually stopped, sat down, and brought your situation before God. I asked Him to move. I asked Him to show up in ways only He can. I don't know what He's going to do, but I trust He heard.`,
+
+      // 16 — Scripture: Psalm 121:1-2, closing the loop
+      (name) => `Hey ${name} — I prayed for you today and I'll keep praying. "I lift up my eyes to the mountains — where does my help come from? My help comes from the Lord, the Maker of heaven and earth." — Psalm 121:1-2. Your help is coming from the right place. I'm standing with you.`,
+    ];
+
+    // Sequential message tracker — persists in localStorage per person
+    const getNextMessage = (personName) => {
+      const key = "gw_msg_idx_" + (personName || "unknown").replace(/\s+/g, "_").toLowerCase();
+      const idx = parseInt(localStorage.getItem(key) || "0", 10);
+      const msg = PRAYER_MESSAGES[idx % PRAYER_MESSAGES.length];
+      localStorage.setItem(key, String((idx + 1) % PRAYER_MESSAGES.length));
+      return msg(personName || "friend");
+    };
+
     // ── Firebase Setup ────────────────────────────────────────────────────────
     const firebaseConfig = {
       apiKey: "AIzaSyBmjqDTNiMIMdPWX-WdByr3p_y4MIc6hvM",
@@ -1085,8 +1146,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [shown, setShown]         = React.useState({});
       const [showNotify, setShowNotify] = React.useState(false);
       const [emails, setEmails]       = React.useState({});
+      const [phones, setPhones]       = React.useState({});
       const [messages, setMessages]   = React.useState({});
       const [sent, setSent]           = React.useState({});
+      const [sentSMS, setSentSMS]     = React.useState({});
       const [musicOn, setMusicOn]     = React.useState(false);
       const timerRef                  = React.useRef(null);
       const audioRef                  = React.useRef(null);
@@ -1158,12 +1221,12 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         handleAmen();
       };
 
-      // Build default messages once
+      // Build sequential messages on mount
       React.useEffect(() => {
         if (notifiableEntries.length > 0) {
           const defaults = {};
           notifiableEntries.forEach(e => {
-            defaults[e.id] = `Hey ${e.name || "friend"} — I want you to know I prayed for you today. You are not forgotten. I'm standing with you in this and believing God is at work in your situation. You are loved.`;
+            defaults[e.id] = getNextMessage(e.name || "friend");
           });
           setMessages(defaults);
         }
@@ -1202,8 +1265,14 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         if (!email) return;
         const subject = encodeURIComponent("I prayed for you today");
         const body = encodeURIComponent(messages[e.id] || "");
-        window.open(`mailto:${email}?subject=${subject}&body=${body}`, "_blank");
+        window.open("mailto:" + email + "?subject=" + subject + "&body=" + body, "_blank");
         setSent(prev => ({ ...prev, [e.id]: true }));
+      };
+
+      const sendSMS = (e) => {
+        const body = encodeURIComponent(messages[e.id] || "");
+        window.open("sms:" + (phones[e.id] || "") + "?body=" + body, "_blank");
+        setSentSMS(prev => ({ ...prev, [e.id]: true }));
       };
 
       const current = steps[step];
@@ -1226,7 +1295,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "24px 5vw", maxWidth: 600, margin: "0 auto", width: "100%" }}>
             <div style={{ fontSize: 13, color: shellSubtext, lineHeight: 1.6, marginBottom: 24 }}>
-              Add their email and customize the message. Tapping "Send" opens your email app — you can review it before it goes.
+              Each message is unique — they'll get a different one each time you pray for them. Customize it before sending.
             </div>
             {notifiableEntries.map(e => (
               <div key={e.id} style={{ background: shellCard, borderRadius: 16, padding: "20px", marginBottom: 14 }}>
@@ -1240,29 +1309,60 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                     <div style={{ fontSize: 12, color: shellSubtext }}>{e.text}</div>
                   </div>
                 </div>
-                {!sent[e.id] && (
-                  <>
-                    <input
-                      type="email"
-                      placeholder="Their email address"
-                      value={emails[e.id] || ""}
-                      onChange={ev => setEmails(prev => ({ ...prev, [e.id]: ev.target.value }))}
-                      style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid " + shellBorder, background: shellInput, fontSize: 14, color: shellText, marginBottom: 10, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
-                    />
-                    <textarea
-                      value={messages[e.id] || ""}
-                      onChange={ev => setMessages(prev => ({ ...prev, [e.id]: ev.target.value }))}
-                      style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid " + shellBorder, background: shellInput, fontSize: 13, color: shellText, marginBottom: 12, boxSizing: "border-box", outline: "none", fontFamily: "inherit", lineHeight: 1.65, resize: "none", minHeight: 100 }}
-                    />
-                    <button onClick={() => sendEmail(e)}
-                      disabled={!emails[e.id]}
-                      style={{ background: emails[e.id] ? accentColor : "#DDE3F0", color: emails[e.id] ? "#FFFFFF" : "#8A93A8", border: "none", borderRadius: 10, padding: "12px 18px", fontSize: 13, fontWeight: 600, cursor: emails[e.id] ? "pointer" : "not-allowed", width: "100%", transition: "all 0.2s" }}>
-                      Send email →
-                    </button>
-                  </>
+                {/* Message — always editable */}
+                <textarea
+                  value={messages[e.id] || ""}
+                  onChange={ev => setMessages(prev => ({ ...prev, [e.id]: ev.target.value }))}
+                  style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid " + shellBorder, background: shellInput, fontSize: 13, color: shellText, marginBottom: 14, boxSizing: "border-box", outline: "none", fontFamily: "inherit", lineHeight: 1.65, resize: "none", minHeight: 110 }}
+                />
+
+                {/* Email section */}
+                {!sent[e.id] ? (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: shellSubtext, textTransform: "uppercase", marginBottom: 8 }}>Email</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        type="email"
+                        placeholder="Their email address"
+                        value={emails[e.id] || ""}
+                        onChange={ev => setEmails(prev => ({ ...prev, [e.id]: ev.target.value }))}
+                        style={{ flex: 1, padding: "11px 14px", borderRadius: 10, border: "1px solid " + shellBorder, background: shellInput, fontSize: 14, color: shellText, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
+                      />
+                      <button onClick={() => sendEmail(e)}
+                        disabled={!emails[e.id]}
+                        style={{ background: emails[e.id] ? accentColor : shellBorder, color: emails[e.id] ? "#FFFFFF" : shellSubtext, border: "none", borderRadius: 10, padding: "11px 16px", fontSize: 13, fontWeight: 600, cursor: emails[e.id] ? "pointer" : "not-allowed", flexShrink: 0, transition: "all 0.2s" }}>
+                        Send ✉
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: "#4A9E7F", fontWeight: 600, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>✓</span> Email sent
+                  </div>
                 )}
-                {sent[e.id] && (
-                  <div style={{ fontSize: 13, color: "#4A9E7F", fontWeight: 500, textAlign: "center" }}>Email sent ✓</div>
+
+                {/* SMS section */}
+                {!sentSMS[e.id] ? (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: shellSubtext, textTransform: "uppercase", marginBottom: 8 }}>Text message</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        type="tel"
+                        placeholder="Their phone number"
+                        value={phones[e.id] || ""}
+                        onChange={ev => setPhones(prev => ({ ...prev, [e.id]: ev.target.value }))}
+                        style={{ flex: 1, padding: "11px 14px", borderRadius: 10, border: "1px solid " + shellBorder, background: shellInput, fontSize: 14, color: shellText, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
+                      />
+                      <button onClick={() => sendSMS(e)}
+                        style={{ background: "#4A9E7F", color: "#FFFFFF", border: "none", borderRadius: 10, padding: "11px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+                        Send 💬
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: "#4A9E7F", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>✓</span> Text opened
+                  </div>
                 )}
               </div>
             ))}
@@ -1946,6 +2046,54 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       />;
     }
 
+
+    const MILESTONES = [
+      { days: 1,   label: "First Prayer",    icon: "🙏", message: "You started. That's everything." },
+      { days: 3,   label: "3 Days",          icon: "🌱", message: "A seed is planted. Keep watering it." },
+      { days: 7,   label: "One Week",        icon: "⭐", message: "A full week of turning toward God." },
+      { days: 14,  label: "Two Weeks",       icon: "🔥", message: "You're building something real." },
+      { days: 21,  label: "21 Days",         icon: "💪", message: "They say it takes 21 days to form a habit. You're there." },
+      { days: 30,  label: "30 Days",         icon: "🏆", message: "A month of faithful prayer. God has been listening." },
+      { days: 60,  label: "60 Days",         icon: "✨", message: "Two months. Your prayer life is becoming who you are." },
+      { days: 100, label: "100 Days",        icon: "👑", message: "100 days of seeking God. This is extraordinary." },
+      { days: 180, label: "Six Months",      icon: "🎯", message: "Half a year of daily prayer. You are a person of prayer." },
+      { days: 365, label: "One Year",        icon: "🌟", message: "A full year. Few people walk this road. You did." },
+    ];
+
+    const DAILY_ENCOURAGEMENTS = [
+      { ref: "Psalm 5:3",        text: "In the morning, O Lord, you hear my voice; in the morning I lay my requests before you and wait in expectation." },
+      { ref: "Jeremiah 29:12",   text: "You will call on me and come and pray to me, and I will listen to you." },
+      { ref: "1 Thess. 5:17",    text: "Pray continually." },
+      { ref: "Matthew 6:6",      text: "When you pray, go into your room, close the door and pray to your Father, who is unseen. Then your Father, who sees what is done in secret, will reward you." },
+      { ref: "Philippians 4:6",  text: "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God." },
+      { ref: "James 5:16",       text: "The prayer of a righteous person is powerful and effective." },
+      { ref: "Luke 18:1",        text: "Jesus told his disciples a parable to show them that they should always pray and not give up." },
+      { ref: "Psalm 145:18",     text: "The Lord is near to all who call on him, to all who call on him in truth." },
+      { ref: "Romans 8:26",      text: "The Spirit helps us in our weakness. We do not know what we ought to pray for, but the Spirit himself intercedes for us." },
+      { ref: "Mark 11:24",       text: "Whatever you ask for in prayer, believe that you have received it, and it will be yours." },
+      { ref: "Isaiah 65:24",     text: "Before they call I will answer; while they are yet speaking I will hear." },
+      { ref: "Psalm 34:15",      text: "The eyes of the Lord are on the righteous, and his ears are attentive to their cry." },
+      { ref: "Matthew 7:7",      text: "Ask and it will be given to you; seek and you will find; knock and the door will be opened to you." },
+      { ref: "John 15:7",        text: "If you remain in me and my words remain in you, ask whatever you wish, and it will be done for you." },
+      { ref: "Colossians 4:2",   text: "Devote yourselves to prayer, being watchful and thankful." },
+      { ref: "1 John 5:14",      text: "This is the confidence we have in approaching God: that if we ask anything according to his will, he hears us." },
+      { ref: "Psalm 66:19",      text: "But God has surely listened and has heard my prayer." },
+      { ref: "Hebrews 4:16",     text: "Let us then approach God's throne of grace with confidence, so that we may receive mercy and find grace to help us in our time of need." },
+      { ref: "Psalm 116:1–2",    text: "I love the Lord, for he heard my voice; he heard my cry for mercy. Because he turned his ear to me, I will call on him as long as I live." },
+      { ref: "Matthew 18:20",    text: "For where two or three gather in my name, there am I with them." },
+      { ref: "Psalm 62:8",       text: "Trust in him at all times, you people; pour out your hearts to him, for God is our refuge." },
+      { ref: "Nehemiah 1:6",     text: "Let your ear be attentive and your eyes open to hear the prayer your servant is praying before you day and night." },
+      { ref: "Job 22:27",        text: "You will pray to him, and he will hear you." },
+      { ref: "Psalm 17:6",       text: "I call on you, my God, for you will answer me; turn your ear to me and hear my prayer." },
+      { ref: "Daniel 9:23",      text: "As soon as you began to pray, a word went out, which I have come to tell you, for you are highly esteemed." },
+      { ref: "Acts 2:42",        text: "They devoted themselves to the apostles' teaching and to fellowship, to the breaking of bread and to prayer." },
+      { ref: "Psalm 86:7",       text: "When I am in distress, I call to you, because you answer me." },
+      { ref: "Ezekiel 36:37",    text: "I will let the people of Israel ask me to do this for them." },
+      { ref: "1 Timothy 2:1",    text: "I urge, then, first of all, that petitions, prayers, intercession and thanksgiving be made for all people." },
+      { ref: "Psalm 27:7–8",     text: "Hear my voice when I call, Lord; be merciful to me and answer me. My heart says of you, 'Seek his face!' Your face, Lord, I will seek." },
+      { ref: "Psalm 46:10",      text: "Be still, and know that I am God. I will be exalted among the nations, I will be exalted in the earth." },
+    ];
+
     // ── Main App ──────────────────────────────────────────────────────────────
     function App() {
       // ── Auth state ──
@@ -1967,6 +2115,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [showDailyOffice, setShowDailyOffice] = useState(false);
       const [showMoreModels, setShowMoreModels]   = useState(false);
       const [showBoardPrayer, setShowBoardPrayer] = useState(false);
+      const [weeklyGoal, setWeeklyGoal]         = useState(5);
+      const [showGoalPicker, setShowGoalPicker] = useState(false);
       const [inviteMsg, setInviteMsg]           = useState("Hey — I've been using an app called Groundwork to learn how to pray and I thought of you. It's not just a devotional — it actually teaches you how to pray using models like the Lord's Prayer and the Psalms. It's free and you can open it right from your phone. Here's the link: https://nchlshodge.github.io/groundwork/");
       const [copied, setCopied]                 = useState(false);
       const [activeModule, setActiveModule] = useState("lords");
@@ -2012,32 +2162,36 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         ref.get().then(doc => {
           if (doc.exists) {
             const data = doc.data();
-            if (data.entries) {
-              // Merge carefully — only add missing keys from INITIAL_ENTRIES, never overwrite real data
-              const merged = { ...INITIAL_ENTRIES };
+            // Load entries — handle both present and missing entries field
+            if (data.entries && typeof data.entries === "object") {
+              const merged = {
+                praise: [], worship: [], petition: [], intercession: [],
+                confession: [], forgiveness: [], testimonies: [],
+              };
               Object.keys(data.entries).forEach(key => {
-                merged[key] = data.entries[key];
+                if (Array.isArray(data.entries[key])) {
+                  merged[key] = data.entries[key];
+                }
               });
-              // Ensure testimonies key exists even if not in saved data
-              if (!merged.testimonies) merged.testimonies = [];
               setEntries(merged);
             }
-            if (data.segments)    setSegments(data.segments);
-            if (data.tabSegments) setTabSegments(data.tabSegments);
+            // Load other fields
+            if (data.segments && Array.isArray(data.segments))       setSegments(data.segments);
+            if (data.tabSegments && Array.isArray(data.tabSegments)) setTabSegments(data.tabSegments);
             if (data.schedule)    setSchedule(data.schedule);
             if (data.prayerLog)   setPrayerLog(data.prayerLog);
             if (data.lastModel)   setLastModel(data.lastModel);
             if (data.darkMode !== undefined) setDarkMode(data.darkMode);
+            if (data.weeklyGoal)    setWeeklyGoal(data.weeklyGoal);
             if (data.hasSeenOnboarding) {
               setHasSeenOnboarding(true);
               setShowHome(false);
               setTab("board");
             } else {
-              // First time user — show onboarding
               setShowHome(true);
             }
           } else {
-            // Brand new user — start with empty boards and show onboarding
+            // Brand new user
             setEntries({
               praise: [], worship: [], petition: [], intercession: [],
               confession: [], forgiveness: [], testimonies: [],
@@ -2045,7 +2199,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             setShowHome(true);
           }
           setDataLoading(false);
-        }).catch(() => setDataLoading(false));
+        }).catch(err => {
+          console.error("Firestore load error:", err);
+          setDataLoading(false);
+        });
       }, [user]);
 
       // ── Save to Firestore whenever data changes ──
@@ -2053,10 +2210,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         if (!user || dataLoading) return;
         const ref = db.collection("users").doc(user.uid);
         const timer = setTimeout(() => {
-          ref.set({ entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding }, { merge: true });
+          ref.set({ entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding, weeklyGoal }, { merge: true });
         }, 1000);
         return () => clearTimeout(timer);
-      }, [entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding, user]);
+      }, [entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding, weeklyGoal, user]);
 
       const signOut = () => auth.signOut();
 
@@ -2514,9 +2671,122 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           );
         }
 
-        // Section overview
+        // Section overview — compute prayer life stats
+        const today = new Date().toDateString();
+        const logDates = [...new Set(prayerLog.map(e => new Date(e.date).toDateString()))];
+        const prayedToday = logDates.includes(today);
+
+        // Streak
+        let streak = 0;
+        let checkDate = new Date();
+        while (logDates.includes(checkDate.toDateString())) {
+          streak++;
+          checkDate = new Date(checkDate.getTime() - 86400000);
+        }
+
+        // Weekly progress — days prayed in current week (Mon-Sun)
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        weekStart.setHours(0,0,0,0);
+        const daysThisWeek = logDates.filter(d => new Date(d) >= weekStart).length;
+
+        // Next milestone
+        const nextMilestone = MILESTONES.find(m => m.days > streak);
+        const prevMilestone = [...MILESTONES].reverse().find(m => m.days <= streak);
+
+        // Daily encouragement — rotates by day of year
+        const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+        const todaysVerse = DAILY_ENCOURAGEMENTS[dayOfYear % DAILY_ENCOURAGEMENTS.length];
+
+        // Milestone just hit?
+        const justHitMilestone = MILESTONES.find(m => m.days === streak);
+
         return (
           <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
+
+            {/* Prayer Life Card */}
+            <div style={{ background: C.dark, borderRadius: 18, padding: "20px", marginBottom: 20, position: "relative", overflow: "hidden" }}>
+              {/* Background decoration */}
+              <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(107,95,214,0.2)" }} />
+              <div style={{ position: "absolute", bottom: -20, left: -20, width: 80, height: 80, borderRadius: "50%", background: "rgba(74,158,127,0.15)" }} />
+
+              {/* Milestone celebration */}
+              {justHitMilestone && (
+                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>{justHitMilestone.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>{justHitMilestone.label} milestone!</div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)" }}>{justHitMilestone.message}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Streak + today */}
+              <div style={{ display: "flex", gap: 10, marginBottom: 16, position: "relative", zIndex: 1 }}>
+                <div style={{ flex: 1, background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px", textAlign: "center" }}>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.03em", lineHeight: 1 }}>{streak}</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 4 }}>Day streak</div>
+                </div>
+                <div style={{ flex: 1, background: prayedToday ? "rgba(74,158,127,0.3)" : "rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px", textAlign: "center", border: prayedToday ? "1px solid rgba(74,158,127,0.5)" : "none" }}>
+                  <div style={{ fontSize: 24, marginBottom: 2 }}>{prayedToday ? "✓" : "○"}</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: prayedToday ? "#5BB891" : "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{prayedToday ? "Prayed today" : "Not yet today"}</div>
+                </div>
+              </div>
+
+              {/* Weekly goal */}
+              <div style={{ position: "relative", zIndex: 1, marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>This week</div>
+                  <button onClick={() => setShowGoalPicker(!showGoalPicker)}
+                    style={{ background: "none", border: "none", fontSize: 11, color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: 0 }}>
+                    {daysThisWeek}/{weeklyGoal} days · change goal
+                  </button>
+                </div>
+                {/* Progress bar */}
+                <div style={{ height: 6, background: "rgba(255,255,255,0.1)", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ height: "100%", background: daysThisWeek >= weeklyGoal ? "#5BB891" : C.accent, borderRadius: 3, width: Math.min(100, (daysThisWeek / weeklyGoal) * 100) + "%", transition: "width 0.5s ease" }} />
+                </div>
+                {/* Day dots */}
+                <div style={{ display: "flex", gap: 4, marginTop: 8, justifyContent: "center" }}>
+                  {Array.from({ length: weeklyGoal }).map((_, i) => (
+                    <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: i < daysThisWeek ? C.accent : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
+                  ))}
+                </div>
+
+                {/* Goal picker */}
+                {showGoalPicker && (
+                  <div style={{ marginTop: 10, display: "flex", gap: 6, justifyContent: "center" }}>
+                    {[2,3,4,5,6,7].map(n => (
+                      <button key={n} onClick={() => { setWeeklyGoal(n); setShowGoalPicker(false); }}
+                        style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: weeklyGoal === n ? C.accent : "rgba(255,255,255,0.1)", color: "#FFFFFF", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Next milestone */}
+              {nextMilestone && (
+                <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 16 }}>{nextMilestone.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Next milestone</div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>{nextMilestone.label} — {nextMilestone.days - streak} day{nextMilestone.days - streak !== 1 ? "s" : ""} away</div>
+                  </div>
+                  {prevMilestone && (
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{prevMilestone.icon} {prevMilestone.label}</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Daily verse */}
+            <div style={{ background: C.card, borderRadius: 14, padding: "14px 16px", marginBottom: 20, borderLeft: "3px solid " + C.accent }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: C.accent, textTransform: "uppercase", marginBottom: 6 }}>{todaysVerse.ref}</div>
+              <div style={{ fontSize: 13, color: C.body, lineHeight: 1.65, fontStyle: "italic" }}>"{todaysVerse.text}"</div>
+            </div>
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase" }}>Prayer Board</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -2595,6 +2865,27 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               }}
                 style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 10, padding: "10px 16px", fontSize: 12, color: C.stone, cursor: "pointer", width: "100%", fontWeight: 500 }}>
                 ↓ Download a backup copy
+              </button>
+              <button onClick={() => {
+                  if (!user) return;
+                  setDataLoading(true);
+                  db.collection("users").doc(user.uid).get().then(doc => {
+                    if (doc.exists && doc.data().entries) {
+                      const data = doc.data();
+                      const merged = { praise: [], worship: [], petition: [], intercession: [], confession: [], forgiveness: [], testimonies: [] };
+                      Object.keys(data.entries).forEach(key => {
+                        if (Array.isArray(data.entries[key])) merged[key] = data.entries[key];
+                      });
+                      setEntries(merged);
+                      alert("Prayer board restored from your account ✓");
+                    } else {
+                      alert("No saved data found in your account.");
+                    }
+                    setDataLoading(false);
+                  }).catch(err => { alert("Error: " + err.message); setDataLoading(false); });
+                }}
+                style={{ background: "none", border: "1px solid " + C.accent, borderRadius: 10, padding: "10px 16px", fontSize: 12, color: C.accent, cursor: "pointer", width: "100%", fontWeight: 500, marginTop: 8 }}>
+                ↺ Restore from account
               </button>
             </div>
 
