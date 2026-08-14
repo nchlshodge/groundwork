@@ -70,8 +70,8 @@
     const MUSIC_TRACKS = [
       "beginning.mp3",
       "Near.mp3",
-      "Nothing_to_Lose.mp3",
-      "Providence_Hope.mp3",
+      "Nothing to Lose.mp3",
+      "Providence Hope.mp3",
     ];
 
     // Shuffled queue — guarantees all 4 tracks play before repeating
@@ -174,6 +174,11 @@
     const auth = firebase.auth();
     const db   = firebase.firestore();
     const googleProvider = new firebase.auth.GoogleAuthProvider();
+    // Cache writes/reads locally so a prayer entry survives being offline,
+    // backgrounded, or closed before it reaches the server.
+    db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+      console.warn("Firestore offline persistence unavailable:", err.code);
+    });
     // ─────────────────────────────────────────────────────────────────────────
 
     const THEMES = {
@@ -1092,7 +1097,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         const id = setInterval(() => setTick(t => t + 1), 1000);
         return () => clearInterval(id);
       }, []);
-      const diff = Math.floor((new Date() - startTime) / 1000);
+      const diff = Math.floor((Date.now() - new Date(startTime).getTime()) / 1000);
       const h = Math.floor(diff / 3600).toString().padStart(2, "0");
       const m = Math.floor((diff % 3600) / 60).toString().padStart(2, "0");
       const s = (diff % 60).toString().padStart(2, "0");
@@ -1256,7 +1261,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         if (notifiableEntries.length > 0) {
           setShowNotify(true);
         } else {
-          onClose();
+          onClose(true);
         }
       };
 
@@ -1368,7 +1373,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             ))}
           </div>
           <div style={{ padding: "16px 5vw 32px", background: shellBg, borderTop: "1px solid " + shellBorder }}>
-            <button onClick={onClose}
+            <button onClick={() => onClose(true)}
               style={{ background: accentColor, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
               Done
             </button>
@@ -1407,7 +1412,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           {/* Fixed header */}
           <div style={{ padding: "52px 5vw 16px", background: shellBg, borderBottom: "1px solid " + shellBorder }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: color, cursor: "pointer", padding: "0 0 12px 0", fontWeight: 500 }}>← Back</button>
+              <button onClick={() => onClose(false)} style={{ background: "none", border: "none", fontSize: 13, color: color, cursor: "pointer", padding: "0 0 12px 0", fontWeight: 500 }}>← Back</button>
               <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                 <button onClick={toggleMusic} style={{ background: musicOn ? accentColor : "transparent", border: "1px solid " + (musicOn ? accentColor : shellBorder), borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600, color: musicOn ? "#FFFFFF" : shellSubtext, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, transition: "all 0.2s" }}>
                   <span style={{ fontSize: 13 }}>{musicOn ? "♪" : "♩"}</span>
@@ -2183,6 +2188,12 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             if (data.lastModel)   setLastModel(data.lastModel);
             if (data.darkMode !== undefined) setDarkMode(data.darkMode);
             if (data.weeklyGoal)    setWeeklyGoal(data.weeklyGoal);
+            if (data.fastActive) {
+              setFastActive(true);
+              setFastType(data.fastType || null);
+              setFastStart(data.fastStart || null);
+              setFastNotes(data.fastNotes || "");
+            }
             if (data.hasSeenOnboarding) {
               setHasSeenOnboarding(true);
               setShowHome(false);
@@ -2206,14 +2217,43 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       }, [user]);
 
       // ── Save to Firestore whenever data changes ──
+      // Keep the latest pending write in refs so it can be flushed immediately
+      // (see visibility/pagehide effect below) instead of only on a delayed timer,
+      // which was getting silently dropped when the app was backgrounded or closed.
+      const pendingWriteRef = React.useRef(null);
       useEffect(() => {
-        if (!user || dataLoading) return;
+        if (!user || dataLoading) {
+          pendingWriteRef.current = null;
+          return;
+        }
         const ref = db.collection("users").doc(user.uid);
-        const timer = setTimeout(() => {
-          ref.set({ entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding, weeklyGoal }, { merge: true });
-        }, 1000);
-        return () => clearTimeout(timer);
-      }, [entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding, weeklyGoal, user]);
+        const payload = { entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding, weeklyGoal, fastActive, fastType, fastStart, fastNotes };
+        const flush = () => {
+          ref.set(payload, { merge: true });
+          pendingWriteRef.current = null;
+        };
+        pendingWriteRef.current = flush;
+        const timer = setTimeout(flush, 1000);
+        return () => {
+          clearTimeout(timer);
+        };
+      }, [entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding, weeklyGoal, fastActive, fastType, fastStart, fastNotes, user, dataLoading]);
+
+      // ── Flush any pending save immediately when the app is backgrounded or closed ──
+      // Mobile browsers can suspend/discard a tab before a debounced setTimeout fires,
+      // silently losing whatever was just entered (e.g. a new prayer request).
+      useEffect(() => {
+        const flushNow = () => {
+          if (pendingWriteRef.current) pendingWriteRef.current();
+        };
+        const onVisibilityChange = () => { if (document.hidden) flushNow(); };
+        document.addEventListener("visibilitychange", onVisibilityChange);
+        window.addEventListener("pagehide", flushNow);
+        return () => {
+          document.removeEventListener("visibilitychange", onVisibilityChange);
+          window.removeEventListener("pagehide", flushNow);
+        };
+      }, []);
 
       const signOut = () => auth.signOut();
 
@@ -2225,15 +2265,12 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const completed = segments.filter(s => s.complete).length;
 
       const logPrayer = (modelName) => {
-        const entry = { id: Date.now(), model: modelName, date: new Date().toISOString() };
+        // Local state only — the autosave effect above (which correctly waits for
+        // dataLoading and flushes on background/close) persists this to Firestore.
+        // A direct write here raced the initial load and could get clobbered by it.
+        const entry = { id: Date.now() + Math.random(), model: modelName, date: new Date().toISOString() };
         setLastModel(modelName);
-        setPrayerLog(prev => {
-          const updated = [entry, ...prev].slice(0, 90); // keep 90 days
-          if (user) {
-            db.collection("users").doc(user.uid).set({ prayerLog: updated }, { merge: true });
-          }
-          return updated;
-        });
+        setPrayerLog(prev => [entry, ...prev].slice(0, 90)); // keep 90 days
       };
 
       // ── Show login if not signed in ──
@@ -2245,21 +2282,20 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       if (!user) return <LoginScreen />;
 
       const markComplete = (id) => {
-        setSegments(segments.map(s => s.id === id ? { ...s, complete: true } : s));
+        setSegments(prev => prev.map(s => s.id === id ? { ...s, complete: true } : s));
         setSelected(null);
       };
 
       const markTabComplete = (id) => {
-        setTabSegments(tabSegments.map(s => s.id === id ? { ...s, complete: true } : s));
+        setTabSegments(prev => prev.map(s => s.id === id ? { ...s, complete: true } : s));
         setSelected(null);
       };
 
       const addEntry = (sectionId) => {
         if (!newEntry.text) return;
-        const sec = SECTIONS.find(s => s.id === sectionId);
-        const entry = { id: Date.now(), text: newEntry.text, date: "Today", done: false };
+        const entry = { id: Date.now() + Math.random(), text: newEntry.text, date: "Today", done: false };
         if (sectionId === "intercession") entry.name = newEntry.name || "Someone";
-        setEntries({ ...entries, [sectionId]: [...entries[sectionId], entry] });
+        setEntries(prev => ({ ...prev, [sectionId]: [...(prev[sectionId] || []), entry] }));
         setNewEntry({ name: "", text: "" });
         setShowAdd(false);
       };
@@ -2267,10 +2303,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const toggleDone = (sectionId, id) => {
         const entry = (entries[sectionId] || []).find(e => e.id === id);
         const isMarkingDone = entry && !entry.done;
-        setEntries({
-          ...entries,
-          [sectionId]: entries[sectionId].map(e => e.id === id ? { ...e, done: !e.done } : e)
-        });
+        setEntries(prev => ({
+          ...prev,
+          [sectionId]: (prev[sectionId] || []).map(e => e.id === id ? { ...e, done: !e.done } : e)
+        }));
         // Trigger testimony prompt when marking petition or intercession as answered
         if (isMarkingDone && (sectionId === "petition" || sectionId === "intercession")) {
           setTestimonyNote("");
@@ -2309,7 +2345,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         if (!testimonyPrompt) return;
         const { entry, sectionId } = testimonyPrompt;
         const testimony = {
-          id: Date.now(),
+          id: Date.now() + Math.random(),
           text: entry.name ? entry.name + " — " + entry.text : entry.text,
           note: testimonyNote,
           date: "Today",
@@ -2568,7 +2604,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         // Section detail view
         if (activeSection) {
           const sec = SECTIONS.find(s => s.id === activeSection);
-          const sectionEntries = entries[activeSection];
+          const sectionEntries = entries[activeSection] || [];
           const active = sectionEntries.filter(e => !e.done);
           const done = sectionEntries.filter(e => e.done);
           return (
@@ -2920,7 +2956,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 12 }}>Intention (optional)</div>
               <textarea style={{ ...inputStyle, height: 80, resize: "none", lineHeight: 1.6 }} placeholder="What are you fasting for?" value={fastNotes} onChange={e => setFastNotes(e.target.value)} />
-              <button disabled={!fastType} onClick={() => { setFastActive(true); setFastStart(new Date()); }}
+              <button disabled={!fastType} onClick={() => { setFastActive(true); setFastStart(new Date().toISOString()); }}
                 style={{ ...btn("primary"), opacity: fastType ? 1 : 0.4 }}>
                 Begin fast
               </button>
@@ -3436,9 +3472,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           ) : showPsalms ? (
             <PsalmsModelScreen entries={entries} onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowPsalms(false); }} isDark={isDark} />
           ) : showTabPrayer ? (
-            <TabernaclePrayerScreen entries={entries} onClose={() => { logPrayer("The Tabernacle Prayer"); setShowTabPrayer(false); }} isDark={isDark} />
+            <TabernaclePrayerScreen entries={entries} onClose={(completed) => { if (completed) logPrayer("The Tabernacle Prayer"); setShowTabPrayer(false); }} isDark={isDark} />
           ) : showPrayer ? (
-            <GuidedPrayerScreen entries={entries} onClose={() => { logPrayer("The Lord's Prayer"); setShowPrayer(false); }} isDark={isDark} />
+            <GuidedPrayerScreen entries={entries} onClose={(completed) => { if (completed) logPrayer("The Lord's Prayer"); setShowPrayer(false); }} isDark={isDark} />
           ) : (
             <>
               {tab === "learn" && renderLearn()}
