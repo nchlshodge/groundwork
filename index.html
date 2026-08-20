@@ -1716,7 +1716,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       // Office overview
       return (
         <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: "#6B5FD6", cursor: "pointer", padding: "0 0 4px 0", fontWeight: 500 }}>← Back to models</button>
+          <button onClick={() => onClose(null)} style={{ background: "none", border: "none", fontSize: 13, color: "#6B5FD6", cursor: "pointer", padding: "0 0 4px 0", fontWeight: 500 }}>← Back to models</button>
 
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: dStone, textTransform: "uppercase", marginBottom: 4, marginTop: 16 }}>Model 3</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: isDark ? "#F0F2F8" : "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 10 }}>The Daily Office</div>
@@ -1834,14 +1834,14 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [selectedType, setSelectedType] = React.useState(null);
       const [showFullPrayer, setShowFullPrayer] = React.useState(false);
 
-      if (showFullPrayer) return <PsalmsFullPrayerScreen entries={entries} onClose={() => { onClose("Praying the Psalms — Full"); setShowFullPrayer(false); }} isDark={isDark} />;
-      if (selectedType) return <PsalmTypePrayerScreen psalmType={selectedType} entries={entries} onClose={() => { onClose(selectedType.name); setSelectedType(null); }} isDark={isDark} />;
+      if (showFullPrayer) return <PsalmsFullPrayerScreen entries={entries} onClose={(completed) => { if (completed) onClose("Praying the Psalms — Full"); setShowFullPrayer(false); }} isDark={isDark} />;
+      if (selectedType) return <PsalmTypePrayerScreen psalmType={selectedType} entries={entries} onClose={(completed) => { if (completed) onClose(selectedType.name); setSelectedType(null); }} isDark={isDark} />;
 
       const typeColors = { praise: "#4A9E7F", lament: "#5B8DD9", penitence: "#9E6B8A", trust: "#B87333", thanksgiving: "#3D7EB0" };
 
       return (
         <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: PSALM_COLOR, cursor: "pointer", padding: "0 0 4px 0", fontWeight: 500 }}>← Back to models</button>
+          <button onClick={() => onClose(null)} style={{ background: "none", border: "none", fontSize: 13, color: PSALM_COLOR, cursor: "pointer", padding: "0 0 4px 0", fontWeight: 500 }}>← Back to models</button>
 
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: dStone, textTransform: "uppercase", marginBottom: 4, marginTop: 16 }}>Model 4</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: isDark ? "#F0F2F8" : "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 10 }}>Praying the Psalms</div>
@@ -2044,7 +2044,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           <div style={{ fontSize: 14, color: C2.stone, textAlign: "center", lineHeight: 1.7, marginBottom: 30 }}>
             Add some prayer requests to your board first — then come back to pray through them.
           </div>
-          <button onClick={onClose}
+          <button onClick={() => onClose(false)}
             style={{ background: C2.accent, color: "#FFF", border: "none", borderRadius: 12, padding: "14px 28px", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
             Go to board
           </button>
@@ -3474,7 +3474,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           </nav>
 
           {showHome ? renderHome() : showBoardPrayer ? (
-            <BoardPrayerScreen entries={entries} onClose={() => setShowBoardPrayer(false)} isDark={isDark} />
+            <BoardPrayerScreen entries={entries} onClose={(completed) => { if (completed) logPrayer("Prayer Board"); setShowBoardPrayer(false); }} isDark={isDark} />
           ) : showSettings ? renderSettings() : showMoreModels ? (
             <MoreModelsScreen onClose={() => setShowMoreModels(false)} onOpenDailyOffice={() => { setShowMoreModels(false); setShowDailyOffice(true); }} isDark={isDark} />
           ) : showDailyOffice ? (
