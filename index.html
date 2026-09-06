@@ -28,12 +28,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Groundwork" />
-  <link rel="apple-touch-icon" href="groundwork-icon.svg" />
-  <link rel="icon" type="image/svg+xml" href="groundwork-icon.svg" />
-  <!-- Firebase CDN -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <link rel="apple-touch-icon" href="groundwork-icon-180.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="groundwork-icon-512.png" />
+  <link rel="icon" type="image/png" sizes="180x180" href="groundwork-icon-180.png" />
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <!-- React -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -171,24 +170,11 @@
       return msg(personName || "friend");
     };
 
-    // ── Firebase Setup ────────────────────────────────────────────────────────
-    const firebaseConfig = {
-      apiKey: "AIzaSyBmjqDTNiMIMdPWX-WdByr3p_y4MIc6hvM",
-      authDomain: "groundwork-56c28.firebaseapp.com",
-      projectId: "groundwork-56c28",
-      storageBucket: "groundwork-56c28.firebasestorage.app",
-      messagingSenderId: "641739206937",
-      appId: "1:641739206937:web:6f4bd0cb975e48395cd588"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db   = firebase.firestore();
-    const googleProvider = new firebase.auth.GoogleAuthProvider();
-    // Cache writes/reads locally so a prayer entry survives being offline,
-    // backgrounded, or closed before it reaches the server.
-    db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-      console.warn("Firestore offline persistence unavailable:", err.code);
-    });
+    // ── Supabase Setup ─────────────────────────────────────────────────────────
+    // Shared backend/auth across the app family (Groundwork, Scripture Scout, Rhythm).
+    const SUPABASE_URL = "https://xzkxigwzoznefywsiwmb.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_55rVNDHc-49Tl7oQsKqikg_TbZJ6-zR";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     // ─────────────────────────────────────────────────────────────────────────
 
     const THEMES = {
@@ -1900,12 +1886,15 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const signIn = async () => {
         setLoading(true);
         setError(null);
-        try {
-          await auth.signInWithPopup(googleProvider);
-        } catch (e) {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: window.location.origin + window.location.pathname },
+        });
+        if (error) {
           setError("Sign in failed. Please try again.");
           setLoading(false);
         }
+        // On success the browser redirects to Google and back — nothing more to do here.
       };
 
       return (
@@ -2162,49 +2151,73 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       // ── Auth listener ──
       useEffect(() => {
-        const unsub = auth.onAuthStateChanged(u => {
-          setUser(u);
+        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+          setUser(session?.user ?? null);
           setAuthLoading(false);
         });
+        supabase.auth.getSession().then(({ data }) => {
+          setUser(data.session?.user ?? null);
+          setAuthLoading(false);
+        });
+        const unsub = () => listener.subscription.unsubscribe();
         return unsub;
       }, []);
 
-      // ── Load user data from Firestore on login ──
+      // ── Load user data from Supabase on login ──
+      // Unlike the old Firestore version, each board mutation below (add/edit/
+      // delete/toggle, logging a prayer, marking a segment complete, starting a
+      // fast) writes straight to its own row immediately — there is no debounced
+      // whole-document save left to race or silently drop.
       useEffect(() => {
         if (!user) return;
         setDataLoading(true);
-        const ref = db.collection("users").doc(user.uid);
-        ref.get().then(doc => {
-          if (doc.exists) {
-            const data = doc.data();
-            // Load entries — handle both present and missing entries field
-            if (data.entries && typeof data.entries === "object") {
-              const merged = {
-                praise: [], worship: [], petition: [], intercession: [],
-                confession: [], forgiveness: [], testimonies: [],
-              };
-              Object.keys(data.entries).forEach(key => {
-                if (Array.isArray(data.entries[key])) {
-                  merged[key] = data.entries[key];
-                }
-              });
-              setEntries(merged);
-            }
-            // Load other fields
-            if (data.segments && Array.isArray(data.segments))       setSegments(data.segments);
-            if (data.tabSegments && Array.isArray(data.tabSegments)) setTabSegments(data.tabSegments);
-            if (data.schedule)    setSchedule(data.schedule);
-            if (data.prayerLog)   setPrayerLog(data.prayerLog);
-            if (data.lastModel)   setLastModel(data.lastModel);
-            if (data.darkMode !== undefined) setDarkMode(data.darkMode);
-            if (data.weeklyGoal)    setWeeklyGoal(data.weeklyGoal);
-            if (data.fastActive) {
-              setFastActive(true);
-              setFastType(data.fastType || null);
-              setFastStart(data.fastStart || null);
-              setFastNotes(data.fastNotes || "");
-            }
-            if (data.hasSeenOnboarding) {
+        (async () => {
+          const [entriesRes, logRes, segRes, fastRes, settingsRes] = await Promise.all([
+            supabase.from("groundwork_entries").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
+            supabase.from("groundwork_prayer_log").select("*").eq("user_id", user.id).order("prayed_at", { ascending: false }).limit(90),
+            supabase.from("groundwork_segment_progress").select("*").eq("user_id", user.id),
+            supabase.from("groundwork_fast").select("*").eq("user_id", user.id).maybeSingle(),
+            supabase.from("groundwork_settings").select("*").eq("user_id", user.id).maybeSingle(),
+          ]);
+          const firstError = [entriesRes, logRes, segRes, fastRes, settingsRes].find(r => r.error)?.error;
+          if (firstError) {
+            console.error("Supabase load error:", firstError);
+            setDataLoading(false);
+            return;
+          }
+
+          const merged = { praise: [], worship: [], petition: [], intercession: [], confession: [], forgiveness: [], testimonies: [] };
+          (entriesRes.data || []).forEach(row => {
+            if (!merged[row.section]) return;
+            merged[row.section].push({
+              id: row.id, text: row.text, name: row.name || undefined, note: row.note || undefined,
+              fromSection: row.from_section || undefined, done: row.done, sample: row.sample, date: "Today",
+            });
+          });
+          setEntries(merged);
+
+          setPrayerLog((logRes.data || []).map(row => ({ id: row.id, model: row.model, date: row.prayed_at })));
+
+          const completedLords = new Set((segRes.data || []).filter(r => r.module === "lords_prayer").map(r => r.segment_id));
+          const completedTab   = new Set((segRes.data || []).filter(r => r.module === "tabernacle").map(r => r.segment_id));
+          setSegments(SEGMENTS.map(s => ({ ...s, complete: completedLords.has(String(s.id)) })));
+          setTabSegments(TABERNACLE_SEGMENTS.map(s => ({ ...s, complete: completedTab.has(String(s.id)) })));
+
+          const fastRow = fastRes.data;
+          if (fastRow && fastRow.active) {
+            setFastActive(true);
+            setFastType(fastRow.fast_type || null);
+            setFastStart(fastRow.started_at || null);
+            setFastNotes(fastRow.notes || "");
+          }
+
+          const settingsRow = settingsRes.data;
+          if (settingsRow) {
+            if (settingsRow.schedule)    setSchedule(settingsRow.schedule);
+            if (settingsRow.last_model)  setLastModel(settingsRow.last_model);
+            if (settingsRow.dark_mode !== null && settingsRow.dark_mode !== undefined) setDarkMode(settingsRow.dark_mode);
+            if (settingsRow.weekly_goal) setWeeklyGoal(settingsRow.weekly_goal);
+            if (settingsRow.has_seen_onboarding) {
               setHasSeenOnboarding(true);
               setShowHome(false);
               setTab("board");
@@ -2212,34 +2225,35 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               setShowHome(true);
             }
           } else {
-            // Brand new user
-            setEntries({
-              praise: [], worship: [], petition: [], intercession: [],
-              confession: [], forgiveness: [], testimonies: [],
-            });
             setShowHome(true);
           }
           setDataLoading(false);
-        }).catch(err => {
-          console.error("Firestore load error:", err);
-          setDataLoading(false);
-        });
+        })();
       }, [user]);
 
-      // ── Save to Firestore whenever data changes ──
-      // Keep the latest pending write in refs so it can be flushed immediately
-      // (see visibility/pagehide effect below) instead of only on a delayed timer,
-      // which was getting silently dropped when the app was backgrounded or closed.
+      // ── Save settings (prefs/schedule) whenever they change ──
+      // This is the one remaining debounced save — it's low-stakes preference
+      // data, not prayer content, so a short delay here is fine. Board entries,
+      // prayer log entries, segment completion, and fasts all write immediately
+      // via their own handlers below instead of going through this path.
       const pendingWriteRef = React.useRef(null);
       useEffect(() => {
         if (!user || dataLoading) {
           pendingWriteRef.current = null;
           return;
         }
-        const ref = db.collection("users").doc(user.uid);
-        const payload = { entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding, weeklyGoal, fastActive, fastType, fastStart, fastNotes };
+        const payload = {
+          user_id: user.id,
+          dark_mode: darkMode,
+          has_seen_onboarding: hasSeenOnboarding,
+          weekly_goal: weeklyGoal,
+          last_model: lastModel,
+          schedule,
+        };
         const flush = () => {
-          ref.set(payload, { merge: true });
+          supabase.from("groundwork_settings").upsert(payload, { onConflict: "user_id" }).then(({ error }) => {
+            if (error) console.error("Settings save error:", error);
+          });
           pendingWriteRef.current = null;
         };
         pendingWriteRef.current = flush;
@@ -2247,11 +2261,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         return () => {
           clearTimeout(timer);
         };
-      }, [entries, segments, tabSegments, schedule, prayerLog, lastModel, darkMode, hasSeenOnboarding, weeklyGoal, fastActive, fastType, fastStart, fastNotes, user, dataLoading]);
+      }, [darkMode, hasSeenOnboarding, weeklyGoal, lastModel, schedule, user, dataLoading]);
 
-      // ── Flush any pending save immediately when the app is backgrounded or closed ──
-      // Mobile browsers can suspend/discard a tab before a debounced setTimeout fires,
-      // silently losing whatever was just entered (e.g. a new prayer request).
+      // ── Flush any pending settings save immediately when the app is backgrounded or closed ──
       useEffect(() => {
         const flushNow = () => {
           if (pendingWriteRef.current) pendingWriteRef.current();
@@ -2265,7 +2277,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         };
       }, []);
 
-      const signOut = () => auth.signOut();
+      const signOut = () => supabase.auth.signOut();
 
       // Resolve dark mode — null means follow system
       const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -2275,12 +2287,15 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const completed = segments.filter(s => s.complete).length;
 
       const logPrayer = (modelName) => {
-        // Local state only — the autosave effect above (which correctly waits for
-        // dataLoading and flushes on background/close) persists this to Firestore.
-        // A direct write here raced the initial load and could get clobbered by it.
-        const entry = { id: Date.now() + Math.random(), model: modelName, date: new Date().toISOString() };
         setLastModel(modelName);
-        setPrayerLog(prev => [entry, ...prev].slice(0, 90)); // keep 90 days
+        const tempId = "temp-" + Date.now() + Math.random();
+        const prayedAt = new Date().toISOString();
+        setPrayerLog(prev => [{ id: tempId, model: modelName, date: prayedAt }, ...prev].slice(0, 90)); // keep 90 days
+        supabase.from("groundwork_prayer_log").insert({ user_id: user.id, model: modelName, prayed_at: prayedAt })
+          .select().single().then(({ data, error }) => {
+            if (error) { console.error("Log prayer failed:", error); return; }
+            setPrayerLog(prev => prev.map(e => e.id === tempId ? { ...e, id: data.id } : e));
+          });
       };
 
       // ── Show login if not signed in ──
@@ -2294,29 +2309,46 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const markComplete = (id) => {
         setSegments(prev => prev.map(s => s.id === id ? { ...s, complete: true } : s));
         setSelected(null);
+        supabase.from("groundwork_segment_progress")
+          .upsert({ user_id: user.id, module: "lords_prayer", segment_id: String(id) }, { onConflict: "user_id,module,segment_id" })
+          .then(({ error }) => { if (error) console.error("Mark complete failed:", error); });
       };
 
       const markTabComplete = (id) => {
         setTabSegments(prev => prev.map(s => s.id === id ? { ...s, complete: true } : s));
         setSelected(null);
+        supabase.from("groundwork_segment_progress")
+          .upsert({ user_id: user.id, module: "tabernacle", segment_id: String(id) }, { onConflict: "user_id,module,segment_id" })
+          .then(({ error }) => { if (error) console.error("Mark tabernacle complete failed:", error); });
       };
 
       const addEntry = (sectionId) => {
         if (!newEntry.text) return;
-        const entry = { id: Date.now() + Math.random(), text: newEntry.text, date: "Today", done: false };
-        if (sectionId === "intercession") entry.name = newEntry.name || "Someone";
+        const tempId = "temp-" + Date.now() + Math.random();
+        const name = sectionId === "intercession" ? (newEntry.name || "Someone") : undefined;
+        const text = newEntry.text;
+        const entry = { id: tempId, text, date: "Today", done: false, name };
         setEntries(prev => ({ ...prev, [sectionId]: [...(prev[sectionId] || []), entry] }));
         setNewEntry({ name: "", text: "" });
         setShowAdd(false);
+        supabase.from("groundwork_entries")
+          .insert({ user_id: user.id, section: sectionId, text, name: name || null, done: false, sample: false })
+          .select().single().then(({ data, error }) => {
+            if (error) { console.error("Add entry failed:", error); return; }
+            setEntries(prev => ({ ...prev, [sectionId]: prev[sectionId].map(e => e.id === tempId ? { ...e, id: data.id } : e) }));
+          });
       };
 
       const toggleDone = (sectionId, id) => {
         const entry = (entries[sectionId] || []).find(e => e.id === id);
-        const isMarkingDone = entry && !entry.done;
+        if (!entry) return;
+        const isMarkingDone = !entry.done;
         setEntries(prev => ({
           ...prev,
           [sectionId]: (prev[sectionId] || []).map(e => e.id === id ? { ...e, done: !e.done } : e)
         }));
+        supabase.from("groundwork_entries").update({ done: !entry.done }).eq("id", id)
+          .then(({ error }) => { if (error) console.error("Toggle done failed:", error); });
         // Trigger testimony prompt when marking petition or intercession as answered
         if (isMarkingDone && (sectionId === "petition" || sectionId === "intercession")) {
           setTestimonyNote("");
@@ -2329,6 +2361,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           ...prev,
           [sectionId]: prev[sectionId].filter(e => e.id !== id)
         }));
+        supabase.from("groundwork_entries").delete().eq("id", id)
+          .then(({ error }) => { if (error) console.error("Delete entry failed:", error); });
       };
 
       const startEdit = (sectionId, entry) => {
@@ -2340,31 +2374,36 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const saveEdit = () => {
         if (!editingEntry || !editText.trim()) return;
         const { sectionId, entry } = editingEntry;
+        const newText = editText.trim();
+        const newName = editName.trim() || entry.name;
         setEntries(prev => ({
           ...prev,
           [sectionId]: prev[sectionId].map(e =>
-            e.id === entry.id ? { ...e, text: editText.trim(), name: editName.trim() || e.name, sample: false } : e
+            e.id === entry.id ? { ...e, text: newText, name: newName, sample: false } : e
           )
         }));
         setEditingEntry(null);
         setEditText("");
         setEditName("");
+        supabase.from("groundwork_entries").update({ text: newText, name: newName || null, sample: false }).eq("id", entry.id)
+          .then(({ error }) => { if (error) console.error("Save edit failed:", error); });
       };
 
       const addTestimony = () => {
         if (!testimonyPrompt) return;
         const { entry, sectionId } = testimonyPrompt;
-        const testimony = {
-          id: Date.now() + Math.random(),
-          text: entry.name ? entry.name + " — " + entry.text : entry.text,
-          note: testimonyNote,
-          date: "Today",
-          done: false,
-          fromSection: sectionId,
-        };
+        const tempId = "temp-" + Date.now() + Math.random();
+        const text = entry.name ? entry.name + " — " + entry.text : entry.text;
+        const testimony = { id: tempId, text, note: testimonyNote, date: "Today", done: false, fromSection: sectionId };
         setEntries(prev => ({ ...prev, testimonies: [testimony, ...(prev.testimonies || [])] }));
         setTestimonyPrompt(null);
         setTestimonyNote("");
+        supabase.from("groundwork_entries")
+          .insert({ user_id: user.id, section: "testimonies", text, note: testimonyNote || null, from_section: sectionId, done: false, sample: false })
+          .select().single().then(({ data, error }) => {
+            if (error) { console.error("Add testimony failed:", error); return; }
+            setEntries(prev => ({ ...prev, testimonies: prev.testimonies.map(e => e.id === tempId ? { ...e, id: data.id } : e) }));
+          });
       };
 
       const skipTestimony = () => {
@@ -2915,20 +2954,21 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               <button onClick={() => {
                   if (!user) return;
                   setDataLoading(true);
-                  db.collection("users").doc(user.uid).get().then(doc => {
-                    if (doc.exists && doc.data().entries) {
-                      const data = doc.data();
+                  supabase.from("groundwork_entries").select("*").eq("user_id", user.id).order("created_at", { ascending: true })
+                    .then(({ data, error }) => {
+                      if (error) { alert("Error: " + error.message); setDataLoading(false); return; }
                       const merged = { praise: [], worship: [], petition: [], intercession: [], confession: [], forgiveness: [], testimonies: [] };
-                      Object.keys(data.entries).forEach(key => {
-                        if (Array.isArray(data.entries[key])) merged[key] = data.entries[key];
+                      (data || []).forEach(row => {
+                        if (!merged[row.section]) return;
+                        merged[row.section].push({
+                          id: row.id, text: row.text, name: row.name || undefined, note: row.note || undefined,
+                          fromSection: row.from_section || undefined, done: row.done, sample: row.sample, date: "Today",
+                        });
                       });
                       setEntries(merged);
-                      alert("Prayer board restored from your account ✓");
-                    } else {
-                      alert("No saved data found in your account.");
-                    }
-                    setDataLoading(false);
-                  }).catch(err => { alert("Error: " + err.message); setDataLoading(false); });
+                      alert(data && data.length ? "Prayer board restored from your account ✓" : "No saved data found in your account.");
+                      setDataLoading(false);
+                    });
                 }}
                 style={{ background: "none", border: "1px solid " + C.accent, borderRadius: 10, padding: "10px 16px", fontSize: 12, color: C.accent, cursor: "pointer", width: "100%", fontWeight: 500, marginTop: 8 }}>
                 ↺ Restore from account
@@ -2966,7 +3006,14 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 12 }}>Intention (optional)</div>
               <textarea style={{ ...inputStyle, height: 80, resize: "none", lineHeight: 1.6 }} placeholder="What are you fasting for?" value={fastNotes} onChange={e => setFastNotes(e.target.value)} />
-              <button disabled={!fastType} onClick={() => { setFastActive(true); setFastStart(new Date().toISOString()); }}
+              <button disabled={!fastType} onClick={() => {
+                  const startedAt = new Date().toISOString();
+                  setFastActive(true);
+                  setFastStart(startedAt);
+                  supabase.from("groundwork_fast")
+                    .upsert({ user_id: user.id, fast_type: fastType, notes: fastNotes, started_at: startedAt, active: true }, { onConflict: "user_id" })
+                    .then(({ error }) => { if (error) console.error("Begin fast failed:", error); });
+                }}
                 style={{ ...btn("primary"), opacity: fastType ? 1 : 0.4 }}>
                 Begin fast
               </button>
@@ -2988,7 +3035,12 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 </div>
               </div>
 
-              <button onClick={() => { setFastActive(false); setFastType(null); setFastStart(null); setFastNotes(""); }}
+              <button onClick={() => {
+                  setFastActive(false); setFastType(null); setFastStart(null); setFastNotes("");
+                  supabase.from("groundwork_fast")
+                    .upsert({ user_id: user.id, active: false, fast_type: null, started_at: null, notes: "" }, { onConflict: "user_id" })
+                    .then(({ error }) => { if (error) console.error("End fast failed:", error); });
+                }}
                 style={btn("ghost")}>
                 End fast
               </button>
