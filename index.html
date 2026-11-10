@@ -1559,7 +1559,27 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
     }
 
 
+    // The Gate: Psalm 100:4 is always shown (the teaching is built on it), plus one
+    // thanksgiving verse that changes every Monday. Add more verses to the rotating
+    // list below and they join the weekly rotation automatically.
+    const GATE_ANCHOR_VERSE = { ref: "Psalm 100:4 (KJV)", text: "Enter into his gates with thanksgiving, and into his courts with praise: be thankful unto him, and bless his name." };
+    const GATE_ROTATING_VERSES = [
+      { ref: "Psalm 95:2 (KJV)", text: "Let us come before his presence with thanksgiving, and make a joyful noise unto him with psalms." },
+      { ref: "Psalm 69:30 (KJV)", text: "I will praise the name of God with a song, and will magnify him with thanksgiving." },
+      { ref: "Psalm 116:17 (KJV)", text: "I will offer to thee the sacrifice of thanksgiving, and will call upon the name of the LORD." },
+      { ref: "Philippians 4:6 (KJV)", text: "Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God." },
+    ];
+    const getGateScriptures = () => {
+      // Local-time day count; day 0 (Jan 1 1970) was a Thursday, so day 4 is the first Monday.
+      const now = new Date();
+      const dayNum = Math.floor((now.getTime() - now.getTimezoneOffset() * 60000) / 86400000);
+      const weekIndex = Math.floor((dayNum - 4) / 7);
+      const rotating = GATE_ROTATING_VERSES[((weekIndex % GATE_ROTATING_VERSES.length) + GATE_ROTATING_VERSES.length) % GATE_ROTATING_VERSES.length];
+      return [GATE_ANCHOR_VERSE, rotating];
+    };
+
     function TabernaclePrayerScreen({ entries, onClose, isDark }) {
+      const gateScriptures = React.useState(getGateScriptures)[0];
       const worshipVerse  = React.useState(() => pick("worship", 1))[0];
       const wordVerse     = React.useState(() => pick("word", 1))[0];
       const spiritVerse   = React.useState(() => pick("spirit", 1))[0];
@@ -1574,13 +1594,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       );
 
       const steps = [
-        { title: "The Gate", subtitle: "Entering with thanksgiving", color: "#4A9E7F", scriptures: [
-          { ref: "Psalm 100:4 (KJV)", text: "Enter into his gates with thanksgiving, and into his courts with praise: be thankful unto him, and bless his name." },
-          { ref: "Psalm 95:2 (KJV)", text: "Let us come before his presence with thanksgiving, and make a joyful noise unto him with psalms." },
-          { ref: "Psalm 69:30 (KJV)", text: "I will praise the name of God with a song, and will magnify him with thanksgiving." },
-          { ref: "Psalm 116:17 (KJV)", text: "I will offer to thee the sacrifice of thanksgiving, and will call upon the name of the LORD." },
-          { ref: "Philippians 4:6 (KJV)", text: "Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God." },
-        ], entries: active("praise"), shownKey: "praise" },
+        { title: "The Gate", subtitle: "Entering with thanksgiving", color: "#4A9E7F", scriptures: gateScriptures, entries: active("praise"), shownKey: "praise" },
         { title: "The Brazen Altar", subtitle: "Surrender and lay it all down", color: "#9E6B8A", scripture: { ref: "Romans 12:1", text: "Present your bodies as a living sacrifice, holy and acceptable to God, which is your spiritual worship." }, note: "Lay it all down. What you're carrying. What you've done. What's been done to you.", entries: [...active("confession"), ...active("forgiveness")], entrySections: [ { label: "Confession", key: "confession", color: "#9E6B8A", items: active("confession") }, { label: "Forgiveness", key: "forgiveness", color: "#C0724A", items: active("forgiveness") } ] },
         { title: "The Brazen Laver", subtitle: "Cleansing through the Word", color: "#5B8DD9", scripture: wordVerse[0], note: "Let the Word wash over you. Declare who God is.", entries: active("worship"), shownKey: "worship" },
         { title: "The Table of Showbread", subtitle: "Standing on His promises", color: "#6B5FD6", scripture: worshipVerse[0], note: "Stand on what God has said. Declare His promises over your life and your needs.", entries: [] },
