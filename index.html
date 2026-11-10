@@ -379,14 +379,18 @@ Forever. Amen.`,
         tag: "Entering with thanksgiving",
         duration: "4 min",
         complete: false,
-        teaching: `The Tabernacle had one entrance — a single gate on the eastern side. You couldn't approach God from any direction you chose. There was one way in, and it began with a decision to enter.
+        teaching: `The entrance to the Tabernacle is the gate. It is the only way in, and the only way out, to the presence of God. You couldn't approach from any direction you chose. There was one gate, and it began with a decision to enter.
 
-Psalm 100:4 says "Enter his gates with thanksgiving and his courts with praise." The gate is where prayer begins — not with requests, not with confession, but with thanksgiving. Gratitude is the posture that opens the door.
+Jesus said, "I am the way, the truth, and the life: no man cometh unto the Father, but by me" (John 14:6, KJV). The gate points to Him. Every time you come to God in prayer, you come through Jesus.
 
-This is intentional. Thanksgiving shifts your focus before anything else happens. When you begin by naming what God has already done, you remind yourself that He is faithful, that He has been present, that He has provided before. That's the foundation everything else is built on.
+The first part of entering God's presence is thanksgiving. Psalm 100:4 says, "Enter into his gates with thanksgiving, and into his courts with praise: be thankful unto him, and bless his name" (KJV). Not requests first. Not confession first. Thanksgiving first. So take time to be thankful.
 
-You can't rush through the gate. Entering with thanksgiving isn't a formality — it's the act of leaving the noise of your ordinary life outside and stepping deliberately into the presence of God. It's saying: I am here. I am paying attention. I am grateful.`,
-        practice: "Name five things you are genuinely thankful for before you say anything else to God today. Not generic ones — specific ones. The more specific the thanksgiving, the more real the entering.",
+This goes back to the garden of Eden. When mankind was placed there, the Lord said, "Of every tree of the garden thou mayest freely eat" (Genesis 2:16, KJV). Every tree. That is an abundant mindset, and you could even call it a growth mindset. God started the story with provision, not lack.
+
+Thanksgiving works the same way for us. It moves our focus away from striving and trying to get all the things we lack, and onto what we already have. Because God gave it to us, we can know that it is enough for now.
+
+You can't rush through the gate. Entering with thanksgiving isn't a formality. It's leaving the noise of your ordinary life outside and stepping deliberately into His presence. It's saying: I am here. I am paying attention. I am grateful.`,
+        practice: "Take time to be thankful before you say anything else to God today. Name five things you already have — specific ones, not generic. As you name each one, remember that God gave it to you, and that it is enough for now.",
         distinction: null,
       },
       {
@@ -1452,12 +1456,12 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               </div>
 
               {/* Scripture */}
-              {current.scripture && (
-                <div style={{ background: color + "15", borderLeft: `3px solid ${color}`, borderRadius: "0 10px 10px 0", padding: "12px 14px", marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: color, marginBottom: 4 }}>{current.scripture.ref}</div>
-                  <div style={{ fontSize: 13, color: shellBody, lineHeight: 1.65, fontStyle: "italic" }}>"{current.scripture.text}"</div>
+              {(current.scriptures || (current.scripture ? [current.scripture] : [])).map((s, i) => (
+                <div key={i} style={{ background: color + "15", borderLeft: `3px solid ${color}`, borderRadius: "0 10px 10px 0", padding: "12px 14px", marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: color, marginBottom: 4 }}>{s.ref}</div>
+                  <div style={{ fontSize: 13, color: shellBody, lineHeight: 1.65, fontStyle: "italic" }}>"{s.text}"</div>
                 </div>
-              )}
+              ))}
 
               {/* Note */}
               {current.note && (
@@ -1570,7 +1574,13 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       );
 
       const steps = [
-        { title: "The Gate", subtitle: "Entering with thanksgiving", color: "#4A9E7F", scripture: { ref: "Psalm 100:4", text: "Enter his gates with thanksgiving, and his courts with praise! Give thanks to him; bless his name!" }, entries: active("praise"), shownKey: "praise" },
+        { title: "The Gate", subtitle: "Entering with thanksgiving", color: "#4A9E7F", scriptures: [
+          { ref: "Psalm 100:4 (KJV)", text: "Enter into his gates with thanksgiving, and into his courts with praise: be thankful unto him, and bless his name." },
+          { ref: "Psalm 95:2 (KJV)", text: "Let us come before his presence with thanksgiving, and make a joyful noise unto him with psalms." },
+          { ref: "Psalm 69:30 (KJV)", text: "I will praise the name of God with a song, and will magnify him with thanksgiving." },
+          { ref: "Psalm 116:17 (KJV)", text: "I will offer to thee the sacrifice of thanksgiving, and will call upon the name of the LORD." },
+          { ref: "Philippians 4:6 (KJV)", text: "Be careful for nothing; but in every thing by prayer and supplication with thanksgiving let your requests be made known unto God." },
+        ], entries: active("praise"), shownKey: "praise" },
         { title: "The Brazen Altar", subtitle: "Surrender and lay it all down", color: "#9E6B8A", scripture: { ref: "Romans 12:1", text: "Present your bodies as a living sacrifice, holy and acceptable to God, which is your spiritual worship." }, note: "Lay it all down. What you're carrying. What you've done. What's been done to you.", entries: [...active("confession"), ...active("forgiveness")], entrySections: [ { label: "Confession", key: "confession", color: "#9E6B8A", items: active("confession") }, { label: "Forgiveness", key: "forgiveness", color: "#C0724A", items: active("forgiveness") } ] },
         { title: "The Brazen Laver", subtitle: "Cleansing through the Word", color: "#5B8DD9", scripture: wordVerse[0], note: "Let the Word wash over you. Declare who God is.", entries: active("worship"), shownKey: "worship" },
         { title: "The Table of Showbread", subtitle: "Standing on His promises", color: "#6B5FD6", scripture: worshipVerse[0], note: "Stand on what God has said. Declare His promises over your life and your needs.", entries: [] },
