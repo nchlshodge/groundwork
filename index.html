@@ -175,6 +175,89 @@
     const SUPABASE_URL = "https://xzkxigwzoznefywsiwmb.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_55rVNDHc-49Tl7oQsKqikg_TbZJ6-zR";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ── Reliable saving ──────────────────────────────────────────────────────
+    // Every change is written to a queue that lives in localStorage and is sent to
+    // Supabase in order. If the connection drops (or the app is closed mid-save),
+    // the change stays queued on the device and is retried automatically — on
+    // reconnect, on returning to the app, and on the next launch — so nothing is
+    // lost and nothing fails silently. Ids are created on the device, so an entry
+    // can be edited or deleted immediately, even before its first save finishes.
+    const WQ_KEY = "gw_write_queue_v1";
+    const newId = () => (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+          const r = Math.random() * 16 | 0;
+          return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    const isUuid = (v) => typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+    const writeQueue = (() => {
+      let items = [];
+      try { items = JSON.parse(localStorage.getItem(WQ_KEY) || "[]"); if (!Array.isArray(items)) items = []; } catch (e) { items = []; }
+      let uid = null, running = false, timer = null, delay = 4000;
+      let status = { state: "idle", pending: items.length, message: "" };
+      const listeners = new Set();
+      const emit = (patch) => { status = { ...status, ...patch, pending: items.length }; listeners.forEach(l => l(status)); };
+      const persist = () => { try { localStorage.setItem(WQ_KEY, JSON.stringify(items)); } catch (e) {} };
+      const drop = (op) => { const i = items.indexOf(op); if (i >= 0) items.splice(i, 1); persist(); };
+      const mine = () => items.filter(o => o.uid === uid);
+      const send = (op) => {
+        const t = supabase.from(op.table);
+        if (op.type === "upsert") return t.upsert(op.row, { onConflict: op.conflict, ignoreDuplicates: !!op.ignoreDuplicates });
+        if (op.type === "update") return t.update(op.patch).eq("id", op.id);
+        return t.delete().eq("id", op.id);
+      };
+      // No status = the request never reached the server (offline). 5xx/401/408/429 are temporary too.
+      const isTransient = (res) => !res.status || res.status >= 500 || [401, 408, 429].includes(res.status);
+      const run = async () => {
+        if (running || !uid) return;
+        running = true; clearTimeout(timer);
+        try {
+          while (true) {
+            const op = mine()[0];
+            if (!op) break;
+            let res;
+            try { res = await send(op); } catch (e) { res = { error: e, status: 0 }; }
+            if (!res.error) { drop(op); delay = 4000; emit({}); continue; }
+            if (isTransient(res)) {
+              emit({ state: "retrying" });
+              timer = setTimeout(run, delay);
+              delay = Math.min(delay * 2, 30000);
+              return;
+            }
+            // A change the server will never accept: don't let it block everything behind it.
+            console.error("Save rejected:", op, res.error);
+            drop(op);
+            emit({ state: "error", message: (res.error && res.error.message) || "A change couldn't be saved." });
+          }
+          if (status.state === "retrying") emit({ state: "idle" });
+        } finally { running = false; }
+      };
+      window.addEventListener("online", () => { delay = 4000; run(); });
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) run(); });
+      return {
+        setUser(id) { uid = id; if (id) run(); },
+        // op.key: a newer op with the same key replaces an older one that hasn't been sent (latest wins).
+        enqueue(op) {
+          if (!uid) return;
+          op.uid = uid;
+          if (op.key) items = items.filter(o => !(o.key === op.key && o.uid === uid && o !== items[0]));
+          items.push(op); persist(); emit({}); run();
+        },
+        // Resolves once this user's queue is empty (or after ms), so a fresh load doesn't miss unsynced changes.
+        idle(ms) {
+          return new Promise(resolve => {
+            const t0 = Date.now();
+            const tick = () => (mine().length === 0 || Date.now() - t0 > ms) ? resolve() : setTimeout(tick, 100);
+            tick();
+          });
+        },
+        pending() { return mine().length; },
+        dismiss() { if (status.state === "error") emit({ state: items.length ? "retrying" : "idle", message: "" }); },
+        subscribe(fn) { listeners.add(fn); fn(status); return () => listeners.delete(fn); },
+      };
+    })();
     // ─────────────────────────────────────────────────────────────────────────
 
     const THEMES = {
@@ -1903,6 +1986,53 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
 
     // ── Login Screen ──────────────────────────────────────────────────────────
+    // Supabase keeps the Google profile photo in user_metadata (not Firebase's photoURL).
+    // Falls back to the person's initial if there's no photo or it fails to load.
+    function UserAvatar({ user, border, accent, onClick }) {
+      const [failed, setFailed] = React.useState(false);
+      const meta = user.user_metadata || {};
+      const photo = meta.avatar_url || meta.picture;
+      const initial = ((meta.full_name || meta.name || user.email || "?").trim()[0] || "?").toUpperCase();
+      const base = { width: 32, height: 32, borderRadius: "50%", cursor: "pointer", border: `2px solid ${border}`, flexShrink: 0 };
+      if (photo && !failed) {
+        return <img src={photo} alt="Your account — tap to sign out" referrerPolicy="no-referrer" onError={() => setFailed(true)} style={base} onClick={onClick} title="Sign out" />;
+      }
+      return (
+        <div role="button" aria-label="Your account — tap to sign out" onClick={onClick} title="Sign out"
+          style={{ ...base, background: accent, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>
+          {initial}
+        </div>
+      );
+    }
+
+    // Shows when changes are waiting to sync (offline) or a change was rejected,
+    // so a failed save is never invisible.
+    function SyncBanner({ loadError, onRetryLoad }) {
+      const [s, setS] = React.useState({ state: "idle", pending: 0, message: "" });
+      React.useEffect(() => writeQueue.subscribe(setS), []);
+      let text = null, action = null, bg = "#2D2A5E";
+      if (loadError) {
+        text = "Couldn't load your prayer board. Check your connection.";
+        action = { label: "Retry", fn: onRetryLoad };
+        bg = "#9E3B3B";
+      } else if (s.state === "error") {
+        text = "A change couldn't be saved. " + (s.message || "");
+        action = { label: "Dismiss", fn: () => writeQueue.dismiss() };
+        bg = "#9E3B3B";
+      } else if (s.state === "retrying") {
+        text = "Offline — your changes are kept on this device and will save when you're back online.";
+      }
+      if (!text) return null;
+      return (
+        <div role="status" style={{ position: "fixed", left: 12, right: 12, bottom: 16, zIndex: 9999, background: bg, color: "#FFFFFF", borderRadius: 12, padding: "12px 14px", fontSize: 13, lineHeight: 1.5, display: "flex", alignItems: "center", gap: 12, boxShadow: "0 6px 24px rgba(0,0,0,0.35)" }}>
+          <div style={{ flex: 1 }}>{text}</div>
+          {action && (
+            <button onClick={action.fn} style={{ background: "rgba(255,255,255,0.18)", color: "#FFFFFF", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>{action.label}</button>
+          )}
+        </div>
+      );
+    }
+
     function LoginScreen({ onLogin }) {
       const [loading, setLoading] = React.useState(false);
       const [error, setError]     = React.useState(null);
@@ -2166,6 +2296,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [editText, setEditText]           = useState("");
       const [editName, setEditName]           = useState("");
       const [dataLoading, setDataLoading]   = useState(false);
+      const [loadOk, setLoadOk]             = useState(false);   // true only after a successful load
+      const [loadError, setLoadError]       = useState(false);
+      const [reloadKey, setReloadKey]       = useState(0);
 
       // ── Sync body background with theme ──
       React.useEffect(() => {
@@ -2174,15 +2307,19 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       }, [isDark]);
 
       // ── Auth listener ──
+      // Supabase re-announces the session every time the tab regains focus and on
+      // every token refresh. Keep the same user object when it's the same person, so
+      // those events don't trigger a reload of all data (and a jump back to the
+      // Board tab) each time you switch back to the app.
       useEffect(() => {
-        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-          setUser(session?.user ?? null);
+        const apply = (session) => {
+          const next = session?.user ?? null;
+          writeQueue.setUser(next ? next.id : null);
+          setUser(prev => (prev && next && prev.id === next.id) ? prev : next);
           setAuthLoading(false);
-        });
-        supabase.auth.getSession().then(({ data }) => {
-          setUser(data.session?.user ?? null);
-          setAuthLoading(false);
-        });
+        };
+        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => apply(session));
+        supabase.auth.getSession().then(({ data }) => apply(data.session));
         const unsub = () => listener.subscription.unsubscribe();
         return unsub;
       }, []);
@@ -2195,20 +2332,33 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       useEffect(() => {
         if (!user) return;
         setDataLoading(true);
+        setLoadOk(false);
+        setLoadError(false);
         (async () => {
-          const [entriesRes, logRes, segRes, fastRes, settingsRes] = await Promise.all([
-            supabase.from("groundwork_entries").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
-            supabase.from("groundwork_prayer_log").select("*").eq("user_id", user.id).order("prayed_at", { ascending: false }).limit(90),
-            supabase.from("groundwork_segment_progress").select("*").eq("user_id", user.id),
-            supabase.from("groundwork_fast").select("*").eq("user_id", user.id).maybeSingle(),
-            supabase.from("groundwork_settings").select("*").eq("user_id", user.id).maybeSingle(),
-          ]);
-          const firstError = [entriesRes, logRes, segRes, fastRes, settingsRes].find(r => r.error)?.error;
+          // Send any changes still waiting from last time first, so they show up in this load.
+          writeQueue.setUser(user.id);
+          await writeQueue.idle(3000);
+          let results;
+          try {
+            results = await Promise.all([
+              supabase.from("groundwork_entries").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
+              supabase.from("groundwork_prayer_log").select("*").eq("user_id", user.id).order("prayed_at", { ascending: false }).limit(90),
+              supabase.from("groundwork_segment_progress").select("*").eq("user_id", user.id),
+              supabase.from("groundwork_fast").select("*").eq("user_id", user.id).maybeSingle(),
+              supabase.from("groundwork_settings").select("*").eq("user_id", user.id).maybeSingle(),
+            ]);
+          } catch (e) {
+            results = [{ error: e }];
+          }
+          const firstError = results.find(r => r.error)?.error;
           if (firstError) {
+            // Leave loadOk false so the settings auto-save can't write defaults over real settings.
             console.error("Supabase load error:", firstError);
+            setLoadError(true);
             setDataLoading(false);
             return;
           }
+          const [entriesRes, logRes, segRes, fastRes, settingsRes] = results;
 
           const merged = { praise: [], worship: [], petition: [], intercession: [], confession: [], forgiveness: [], testimonies: [] };
           (entriesRes.data || []).forEach(row => {
@@ -2251,22 +2401,23 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           } else {
             setShowHome(true);
           }
+          setLoadOk(true);
           setDataLoading(false);
         })();
-      }, [user]);
+      }, [user?.id, reloadKey]);
 
       // ── Save settings (prefs/schedule) whenever they change ──
-      // This is the one remaining debounced save — it's low-stakes preference
-      // data, not prayer content, so a short delay here is fine. Board entries,
-      // prayer log entries, segment completion, and fasts all write immediately
-      // via their own handlers below instead of going through this path.
+      // The one debounced save left: low-stakes preferences, not prayer content.
+      // It only runs after a successful load (loadOk), so a failed load can never
+      // write default values over the real ones. It goes through the same save
+      // queue as everything else, so it survives being offline too.
       const pendingWriteRef = React.useRef(null);
       useEffect(() => {
-        if (!user || dataLoading) {
+        if (!user || dataLoading || !loadOk) {
           pendingWriteRef.current = null;
           return;
         }
-        const payload = {
+        const row = {
           user_id: user.id,
           dark_mode: darkMode,
           has_seen_onboarding: hasSeenOnboarding,
@@ -2275,9 +2426,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           schedule,
         };
         const flush = () => {
-          supabase.from("groundwork_settings").upsert(payload, { onConflict: "user_id" }).then(({ error }) => {
-            if (error) console.error("Settings save error:", error);
-          });
+          writeQueue.enqueue({ type: "upsert", table: "groundwork_settings", conflict: "user_id", row, key: "settings" });
           pendingWriteRef.current = null;
         };
         pendingWriteRef.current = flush;
@@ -2285,7 +2434,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         return () => {
           clearTimeout(timer);
         };
-      }, [darkMode, hasSeenOnboarding, weeklyGoal, lastModel, schedule, user, dataLoading]);
+      }, [darkMode, hasSeenOnboarding, weeklyGoal, lastModel, schedule, user, dataLoading, loadOk]);
 
       // ── Flush any pending settings save immediately when the app is backgrounded or closed ──
       useEffect(() => {
@@ -2312,14 +2461,11 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       const logPrayer = (modelName) => {
         setLastModel(modelName);
-        const tempId = "temp-" + Date.now() + Math.random();
         const prayedAt = new Date().toISOString();
-        setPrayerLog(prev => [{ id: tempId, model: modelName, date: prayedAt }, ...prev].slice(0, 90)); // keep 90 days
-        supabase.from("groundwork_prayer_log").insert({ user_id: user.id, model: modelName, prayed_at: prayedAt })
-          .select().single().then(({ data, error }) => {
-            if (error) { console.error("Log prayer failed:", error); return; }
-            setPrayerLog(prev => prev.map(e => e.id === tempId ? { ...e, id: data.id } : e));
-          });
+        setPrayerLog(prev => [{ id: prayedAt, model: modelName, date: prayedAt }, ...prev].slice(0, 90)); // keep 90 days
+        // (user_id, prayed_at) is unique, so a retried save can never count the same session twice.
+        writeQueue.enqueue({ type: "upsert", table: "groundwork_prayer_log", conflict: "user_id,prayed_at", ignoreDuplicates: true,
+          row: { user_id: user.id, model: modelName, prayed_at: prayedAt } });
       };
 
       // ── Show login if not signed in ──
@@ -2333,34 +2479,29 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const markComplete = (id) => {
         setSegments(prev => prev.map(s => s.id === id ? { ...s, complete: true } : s));
         setSelected(null);
-        supabase.from("groundwork_segment_progress")
-          .upsert({ user_id: user.id, module: "lords_prayer", segment_id: String(id) }, { onConflict: "user_id,module,segment_id" })
-          .then(({ error }) => { if (error) console.error("Mark complete failed:", error); });
+        writeQueue.enqueue({ type: "upsert", table: "groundwork_segment_progress", conflict: "user_id,module,segment_id", ignoreDuplicates: true,
+          row: { user_id: user.id, module: "lords_prayer", segment_id: String(id) } });
       };
 
       const markTabComplete = (id) => {
         setTabSegments(prev => prev.map(s => s.id === id ? { ...s, complete: true } : s));
         setSelected(null);
-        supabase.from("groundwork_segment_progress")
-          .upsert({ user_id: user.id, module: "tabernacle", segment_id: String(id) }, { onConflict: "user_id,module,segment_id" })
-          .then(({ error }) => { if (error) console.error("Mark tabernacle complete failed:", error); });
+        writeQueue.enqueue({ type: "upsert", table: "groundwork_segment_progress", conflict: "user_id,module,segment_id", ignoreDuplicates: true,
+          row: { user_id: user.id, module: "tabernacle", segment_id: String(id) } });
       };
 
       const addEntry = (sectionId) => {
         if (!newEntry.text) return;
-        const tempId = "temp-" + Date.now() + Math.random();
+        // The id is created here, so the entry can be toggled/edited/deleted right away.
+        const id = newId();
         const name = sectionId === "intercession" ? (newEntry.name || "Someone") : undefined;
         const text = newEntry.text;
-        const entry = { id: tempId, text, date: "Today", done: false, name };
+        const entry = { id, text, date: "Today", done: false, name };
         setEntries(prev => ({ ...prev, [sectionId]: [...(prev[sectionId] || []), entry] }));
         setNewEntry({ name: "", text: "" });
         setShowAdd(false);
-        supabase.from("groundwork_entries")
-          .insert({ user_id: user.id, section: sectionId, text, name: name || null, done: false, sample: false })
-          .select().single().then(({ data, error }) => {
-            if (error) { console.error("Add entry failed:", error); return; }
-            setEntries(prev => ({ ...prev, [sectionId]: prev[sectionId].map(e => e.id === tempId ? { ...e, id: data.id } : e) }));
-          });
+        writeQueue.enqueue({ type: "upsert", table: "groundwork_entries", conflict: "id",
+          row: { id, user_id: user.id, section: sectionId, text, name: name || null, done: false, sample: false } });
       };
 
       const toggleDone = (sectionId, id) => {
@@ -2371,8 +2512,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           ...prev,
           [sectionId]: (prev[sectionId] || []).map(e => e.id === id ? { ...e, done: !e.done } : e)
         }));
-        supabase.from("groundwork_entries").update({ done: !entry.done }).eq("id", id)
-          .then(({ error }) => { if (error) console.error("Toggle done failed:", error); });
+        if (isUuid(id)) writeQueue.enqueue({ type: "update", table: "groundwork_entries", id, patch: { done: !entry.done } });
         // Trigger testimony prompt when marking petition or intercession as answered
         if (isMarkingDone && (sectionId === "petition" || sectionId === "intercession")) {
           setTestimonyNote("");
@@ -2385,8 +2525,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           ...prev,
           [sectionId]: prev[sectionId].filter(e => e.id !== id)
         }));
-        supabase.from("groundwork_entries").delete().eq("id", id)
-          .then(({ error }) => { if (error) console.error("Delete entry failed:", error); });
+        if (isUuid(id)) writeQueue.enqueue({ type: "delete", table: "groundwork_entries", id });
       };
 
       const startEdit = (sectionId, entry) => {
@@ -2409,25 +2548,20 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         setEditingEntry(null);
         setEditText("");
         setEditName("");
-        supabase.from("groundwork_entries").update({ text: newText, name: newName || null, sample: false }).eq("id", entry.id)
-          .then(({ error }) => { if (error) console.error("Save edit failed:", error); });
+        if (isUuid(entry.id)) writeQueue.enqueue({ type: "update", table: "groundwork_entries", id: entry.id, patch: { text: newText, name: newName || null, sample: false } });
       };
 
       const addTestimony = () => {
         if (!testimonyPrompt) return;
         const { entry, sectionId } = testimonyPrompt;
-        const tempId = "temp-" + Date.now() + Math.random();
+        const id = newId();
         const text = entry.name ? entry.name + " — " + entry.text : entry.text;
-        const testimony = { id: tempId, text, note: testimonyNote, date: "Today", done: false, fromSection: sectionId };
+        const testimony = { id, text, note: testimonyNote, date: "Today", done: false, fromSection: sectionId };
         setEntries(prev => ({ ...prev, testimonies: [testimony, ...(prev.testimonies || [])] }));
         setTestimonyPrompt(null);
         setTestimonyNote("");
-        supabase.from("groundwork_entries")
-          .insert({ user_id: user.id, section: "testimonies", text, note: testimonyNote || null, from_section: sectionId, done: false, sample: false })
-          .select().single().then(({ data, error }) => {
-            if (error) { console.error("Add testimony failed:", error); return; }
-            setEntries(prev => ({ ...prev, testimonies: prev.testimonies.map(e => e.id === tempId ? { ...e, id: data.id } : e) }));
-          });
+        writeQueue.enqueue({ type: "upsert", table: "groundwork_entries", conflict: "id",
+          row: { id, user_id: user.id, section: "testimonies", text, note: testimonyNote || null, from_section: sectionId, done: false, sample: false } });
       };
 
       const skipTestimony = () => {
@@ -3034,9 +3168,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   const startedAt = new Date().toISOString();
                   setFastActive(true);
                   setFastStart(startedAt);
-                  supabase.from("groundwork_fast")
-                    .upsert({ user_id: user.id, fast_type: fastType, notes: fastNotes, started_at: startedAt, active: true }, { onConflict: "user_id" })
-                    .then(({ error }) => { if (error) console.error("Begin fast failed:", error); });
+                  writeQueue.enqueue({ type: "upsert", table: "groundwork_fast", conflict: "user_id", key: "fast",
+                    row: { user_id: user.id, fast_type: fastType, notes: fastNotes, started_at: startedAt, active: true } });
                 }}
                 style={{ ...btn("primary"), opacity: fastType ? 1 : 0.4 }}>
                 Begin fast
@@ -3061,9 +3194,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
               <button onClick={() => {
                   setFastActive(false); setFastType(null); setFastStart(null); setFastNotes("");
-                  supabase.from("groundwork_fast")
-                    .upsert({ user_id: user.id, active: false, fast_type: null, started_at: null, notes: "" }, { onConflict: "user_id" })
-                    .then(({ error }) => { if (error) console.error("End fast failed:", error); });
+                  writeQueue.enqueue({ type: "upsert", table: "groundwork_fast", conflict: "user_id", key: "fast",
+                    row: { user_id: user.id, active: false, fast_type: null, started_at: null, notes: "" } });
                 }}
                 style={btn("ghost")}>
                 End fast
@@ -3519,6 +3651,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       return (
         <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", background: C.bg, minHeight: "100vh", width: "100%", color: C.ink }}>
+          <SyncBanner loadError={loadError} onRetryLoad={() => setReloadKey(k => k + 1)} />
           {/* Header */}
           <div style={{ padding: "52px 5vw 20px", borderBottom: `1px solid ${C.paper}`, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
             <div>
@@ -3529,7 +3662,11 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               {user && (
-                <img src={user.photoURL} alt="avatar" style={{ width: 32, height: 32, borderRadius: "50%", cursor: "pointer", border: `2px solid ${C.paper}` }} onClick={signOut} title="Sign out" />
+                <UserAvatar user={user} border={C.paper} accent={C.accent} onClick={() => {
+                  const n = writeQueue.pending();
+                  const msg = n ? `Sign out? ${n} recent change${n === 1 ? "" : "s"} haven't synced yet. They stay on this device and will sync when you sign back in.` : "Sign out of Groundwork?";
+                  if (window.confirm(msg)) signOut();
+                }} />
               )}
               <button onClick={() => { setShowSettings(false); setShowHome(true); }}
                 title="How it works"
