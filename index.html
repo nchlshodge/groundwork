@@ -3103,8 +3103,39 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         // Milestone just hit?
         const justHitMilestone = MILESTONES.find(m => m.days === streak);
 
+        // The one primary action: pray through the board (or, if it's empty, start a model).
+        const activeCount = SECTIONS.reduce((n, sec) => n + (entries[sec.id] || []).filter(e => !e.done).length, 0);
+        const modelName = lastModel === "The Tabernacle Prayer" ? "the Tabernacle" : lastModel && /Psalm/i.test(lastModel) ? "the Psalms" : "the Lord's Prayer";
+        const openModel = () => {
+          if (lastModel === "The Tabernacle Prayer") setShowTabPrayer(true);
+          else if (lastModel && /Psalm/i.test(lastModel)) setShowPsalms(true);
+          else setShowPrayer(true);
+        };
+        const prayNow = () => (activeCount > 0 ? setShowBoardPrayer(true) : openModel());
+
         return (
           <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
+
+            {/* The one primary action */}
+            <div style={{ marginBottom: 20 }}>
+              <button onClick={prayNow}
+                style={{ width: "100%", minHeight: 64, background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 18, padding: "14px 20px", fontSize: 20, fontWeight: 700, letterSpacing: "-0.01em", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
+                <span>Pray now</span>
+                <span style={{ fontSize: 13, fontWeight: 500, opacity: 0.9 }}>
+                  {activeCount > 0 ? `Pray through your ${activeCount} request${activeCount === 1 ? "" : "s"}` : `Begin with ${modelName}`}
+                </span>
+              </button>
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button onClick={openModel}
+                  style={{ flex: 1, minHeight: 48, background: "none", border: "1px solid " + C.paper, borderRadius: 14, padding: "10px 12px", fontSize: 14, fontWeight: 600, color: C.ink, cursor: "pointer" }}>
+                  Pray {modelName}
+                </button>
+                <button onClick={() => setShowModelPicker(true)} aria-label="Choose a different prayer model"
+                  style={{ flex: 1, minHeight: 48, background: "none", border: "1px solid " + C.paper, borderRadius: 14, padding: "10px 12px", fontSize: 14, fontWeight: 600, color: C.ink, cursor: "pointer" }}>
+                  Choose a model
+                </button>
+              </div>
+            </div>
 
             {/* Prayer Life Card */}
             <div style={{ background: C.dark, borderRadius: 18, padding: "20px", marginBottom: 20, position: "relative", overflow: "hidden" }}>
@@ -3129,10 +3160,12 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   <div style={{ fontSize: 32, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.03em", lineHeight: 1 }}>{streak}</div>
                   <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 4 }}>Day streak</div>
                 </div>
+                {prayedToday && (
                 <div style={{ flex: 1, background: prayedToday ? "rgba(74,158,127,0.3)" : "rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px", textAlign: "center", border: prayedToday ? "1px solid rgba(74,158,127,0.5)" : "none" }}>
                   <div style={{ fontSize: 24, marginBottom: 2 }}>{prayedToday ? "✓" : "○"}</div>
                   <div style={{ fontSize: 10, fontWeight: 600, color: prayedToday ? "#5BB891" : "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{prayedToday ? "Prayed today" : "Not yet today"}</div>
                 </div>
+                )}
               </div>
 
               {/* Weekly goal */}
@@ -3189,30 +3222,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               <div style={{ fontSize: 13, color: C.body, lineHeight: 1.65, fontStyle: "italic" }}>"{todaysVerse.text}"</div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase" }}>Prayer Board</div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                {/* Just pray through the board */}
-                <button onClick={() => setShowBoardPrayer(true)}
-                  style={{ flex: 1, whiteSpace: "nowrap", background: C.sageFill, color: C.onAccent, border: "none", borderRadius: 22, padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                  🙏 Pray my board
-                </button>
-                {/* Pray using a model */}
-                <button onClick={() => {
-                  const m = lastModel || "";
-                  if (!m || m === "The Lord's Prayer") { setShowPrayer(true); }
-                  else if (m === "The Tabernacle Prayer") { setShowTabPrayer(true); }
-                  else if (/Psalm/i.test(m)) { setShowPsalms(true); }
-                  else { setShowPrayer(true); }
-                }} style={{ flex: 1, whiteSpace: "nowrap", background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 22, padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                  {!lastModel ? "Pray a model" : lastModel === "The Lord's Prayer" ? "Lord's Prayer" : lastModel === "The Tabernacle Prayer" ? "Tabernacle" : /Psalm/i.test(lastModel) ? "Psalms" : "Pray a model"}
-                </button>
-                <button onClick={() => setShowModelPicker(true)} aria-label="Choose a different prayer model" title="Choose a different model"
-                  style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 22, padding: "8px 12px", fontSize: 14, color: C.ink, cursor: "pointer", fontWeight: 500 }}>
-                  ↕
-                </button>
-              </div>
-            </div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 12 }}>Your prayer board</div>
             {SECTIONS.map(sec => {
               const count = entries[sec.id].filter(e => !e.done).length;
               return (
