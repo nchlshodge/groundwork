@@ -2,19 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <!-- Pinch-zoom stays enabled (accessibility). viewport-fit=cover lets the app paint under the
+       notch/home bar; the header and footers pad themselves with env(safe-area-inset-*). -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="color-scheme" content="light dark" />
   <title>Groundwork — Learning to Pray</title>
 
   <!-- SEO & Social -->
   <meta name="description" content="Groundwork teaches you how to pray — not just what to pray. Three models of prayer, a personal prayer board, and guided prayer sessions." />
-  <meta name="theme-color" content="#1A1740" />
+  <!-- Status-bar / browser-chrome colour matches the app header in each scheme (kept in sync with the in-app theme toggle). -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#EEF1F8" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F1117" />
+  <link rel="manifest" href="manifest.webmanifest" />
 
   <!-- Open Graph — controls thumbnail when link is shared -->
   <meta property="og:title" content="Groundwork — Learning to Pray" />
   <meta property="og:description" content="A prayer practice app. Learn the Lord's Prayer, the Tabernacle Prayer, and Praying the Psalms." />
-  <meta property="og:image" content="https://nchlshodge.github.io/groundwork/preview.svg" />
+  <meta property="og:image" content="https://nchlshodge.github.io/groundwork/preview.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:alt" content="Groundwork — Learning to Pray" />
   <meta property="og:url" content="https://nchlshodge.github.io/groundwork/" />
   <meta property="og:type" content="website" />
 
@@ -22,7 +30,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Groundwork — Learning to Pray" />
   <meta name="twitter:description" content="A prayer practice app. Learn the Lord's Prayer, the Tabernacle Prayer, and Praying the Psalms." />
-  <meta name="twitter:image" content="https://nchlshodge.github.io/groundwork/preview.svg" />
+  <meta name="twitter:image" content="https://nchlshodge.github.io/groundwork/preview.png" />
 
   <!-- PWA / Home screen -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -30,6 +38,7 @@
   <meta name="apple-mobile-web-app-title" content="Groundwork" />
   <link rel="apple-touch-icon" href="groundwork-icon-180.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="groundwork-icon-512.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="groundwork-icon-192.png" />
   <link rel="icon" type="image/png" sizes="180x180" href="groundwork-icon-180.png" />
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -39,6 +48,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Full-screen height that tracks the visible area as the phone's URL bar shows/hides (100vh overflows it). */
+    :root { --vh100: 100vh; }
+    @supports (height: 100dvh) { :root { --vh100: 100dvh; } }
     html, body, #root { width: 100%; min-height: 100%; }
     body {
       background: #EEF1F8;
@@ -50,6 +62,31 @@
     button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
     textarea, input { font-family: inherit; -webkit-appearance: none; border-radius: 0; }
     ::-webkit-scrollbar { width: 0; }
+
+    /* ── Mobile feel ── */
+    /* Tapping a control fires immediately (no double-tap-zoom wait) and long-press doesn't select its label. */
+    button, a, [role="button"] { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    /* iOS zooms the page when an input under 16px gets focus. Fix the cause instead of disabling zoom. */
+    @media (pointer: coarse) {
+      input, textarea, select { font-size: 16px !important; }
+      /* Every tap target is at least 44px tall on a touch screen (Apple/WCAG guidance). */
+      button, [role="button"] { min-height: 44px; min-width: 44px; }
+      button:not([role="checkbox"]), [role="button"] { display: inline-flex; align-items: center; justify-content: center; }
+    }
+    /* Press feedback on touch, since the browser's own tap highlight is turned off. */
+    button:not(:disabled):active, [role="button"]:active { opacity: 0.72; }
+
+    body:has(input:focus, textarea:focus) .bottom-nav { display: none; }
+
+    /* ── Accessibility ── */
+    /* A visible keyboard focus ring everywhere (inline styles set outline:none on inputs, hence !important). */
+    :focus-visible { outline: 2px solid #6B5FD6 !important; outline-offset: 2px !important; }
+    @media (prefers-color-scheme: dark) { :focus-visible { outline-color: #A79DFF !important; } }
+    ::selection { background: rgba(107, 95, 214, 0.28); }
+    /* Respect people who ask their device for less motion. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    }
     @keyframes fadeSlideIn {
       from { opacity: 0; transform: translateY(10px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -192,6 +229,24 @@
         });
     const isUuid = (v) => typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
+    // Lets a clickable <div role="button"> work from the keyboard and screen readers (Enter / Space = tap).
+    const kbClick = (ev) => {
+      if (ev.target !== ev.currentTarget) return;
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); ev.currentTarget.click(); }
+    };
+
+    // "Today", "Yesterday", "Nov 3" (adds the year once it's a different year) for the "Added …" label.
+    const relDate = (iso) => {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return "Today";
+      const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+      const now = new Date();
+      const days = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+      if (days <= 0) return "Today";
+      if (days === 1) return "Yesterday";
+      return d.toLocaleDateString(undefined, d.getFullYear() === now.getFullYear() ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" });
+    };
+
     const writeQueue = (() => {
       let items = [];
       try { items = JSON.parse(localStorage.getItem(WQ_KEY) || "[]"); if (!Array.isArray(items)) items = []; } catch (e) { items = []; }
@@ -271,7 +326,7 @@
         paper:  "#DDE3F0",
         accent: "#6B5FD6",
         sage:   "#4A9E7F",
-        stone:  "#8A93A8",
+        stone:  "#5F6880",
         white:  "#FFFFFF",
         dark:   "#2D2A5E",
         body:   "#2C3347",
@@ -280,6 +335,9 @@
         inputBorder: "#DDE3F0",
         inputText: "#1A1F2E",
         navBg:  "#EEF1F8",
+        accentFill: "#6B5FD6",   // button/selected-chip background (white text = 4.97:1)
+        sageFill:   "#33826A",   // sage button background (white text = 4.9:1)
+        onAccent:   "#FFFFFF",   // text on accentFill / sageFill / dark panels
       },
       dark: {
         ink:    "#F0F2F8",
@@ -287,7 +345,7 @@
         paper:  "#2A2D3A",
         accent: "#7C6FE8",
         sage:   "#5BB891",
-        stone:  "#6B7280",
+        stone:  "#9AA3B8",
         white:  "#1C1F2A",
         dark:   "#0A0C14",
         body:   "#C8CEDD",
@@ -296,6 +354,9 @@
         inputBorder: "#2A2D3A",
         inputText: "#F0F2F8",
         navBg:  "#0F1117",
+        accentFill: "#6B5FD6",
+        sageFill:   "#33826A",
+        onAccent:   "#FFFFFF",
       },
     };
 
@@ -1003,7 +1064,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
     const pickScriptures = (n = 2) => pick("kingdom", n);
 
     // ── Practice Timer ────────────────────────────────────────────────────────
-    function PracticeTimer({ practiceText }) {
+    function PracticeTimer({ practiceText, isDark }) {
+      const C = THEMES[isDark ? "dark" : "light"];
       const [state, setState] = useState("idle");
       const [seconds, setSeconds] = useState(60);
       const [musicOn, setMusicOn] = useState(false);
@@ -1102,8 +1164,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const dashOffset = circumference * (1 - progress);
 
       return (
-        <div style={{ background: C.ink, borderRadius: 16, padding: "22px 20px", marginTop: 20 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginBottom: 10 }}>Practice</div>
+        <div style={{ background: "#2D2A5E", borderRadius: 16, padding: "22px 20px", marginTop: 20 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.7)", textTransform: "uppercase", marginBottom: 10 }}>Practice</div>
           <div style={{ fontSize: 13, lineHeight: 1.65, color: "rgba(255,255,255,0.75)", marginBottom: 22 }}>{practiceText}</div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
@@ -1124,7 +1186,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 {state === "done"
                   ? <span style={{ fontSize: 22, color: C.sage }}>✓</span>
                   : <>
-                      <span style={{ fontSize: 26, fontWeight: 700, color: C.white, lineHeight: 1 }}>{seconds}</span>
+                      <span style={{ fontSize: 26, fontWeight: 700, color: "#FFFFFF", lineHeight: 1 }}>{seconds}</span>
                       <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>sec</span>
                     </>
                 }
@@ -1134,7 +1196,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             {/* Buttons */}
             <div style={{ flex: 1 }}>
               {state === "idle" && (
-                <button onClick={startTimer} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 10, padding: "12px 0", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
+                <button onClick={startTimer} style={{ background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 10, padding: "12px 0", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
                   Begin practice
                 </button>
               )}
@@ -1144,7 +1206,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 </button>
               )}
               {state === "done" && (
-                <button onClick={resetTimer} style={{ background: C.sage, color: C.white, border: "none", borderRadius: 10, padding: "12px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
+                <button onClick={resetTimer} style={{ background: C.sageFill, color: C.onAccent, border: "none", borderRadius: 10, padding: "12px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
                   Go again
                 </button>
               )}
@@ -1201,7 +1263,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const remaining = items.length - visible.length;
 
       const feText = isDark ? "#F0F2F8" : "#1A1F2E";
-    const feStone = isDark ? "#6B7280" : "#8A93A8";
+    const feStone = isDark ? "#9AA3B8" : "#5F6880";
     if (items.length === 0) return (
         <div style={{ fontSize: 13, color: feStone, fontStyle: "italic", padding: "8px 0" }}>
           Nothing added yet — head to your board to add some.
@@ -1375,13 +1437,13 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const shellCard = isDark ? "#1C1F2A" : "#FFFFFF";
       const shellBorder = isDark ? "#2A2D3A" : "#DDE3F0";
       const shellText = isDark ? "#F0F2F8" : "#1A1F2E";
-      const shellSubtext = isDark ? "#6B7280" : "#8A93A8";
+      const shellSubtext = isDark ? "#9AA3B8" : "#5F6880";
       const shellBody = isDark ? "#C8CEDD" : "#2C3347";
       const shellInput = isDark ? "#252836" : "#EEF1F8";
 
       if (showNotify) return (
-        <div style={{ minHeight: "100vh", background: shellBg, display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "52px 5vw 20px", borderBottom: "1px solid " + shellBorder, background: shellBg }}>
+        <div style={{ minHeight: "var(--vh100)", background: shellBg, display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 5vw 20px", borderBottom: "1px solid " + shellBorder, background: shellBg }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: shellSubtext, textTransform: "uppercase", marginBottom: 4 }}>You prayed for these people</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: shellText, letterSpacing: "-0.02em" }}>Want to let them know?</div>
           </div>
@@ -1459,7 +1521,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               </div>
             ))}
           </div>
-          <div style={{ padding: "16px 5vw 32px", background: shellBg, borderTop: "1px solid " + shellBorder }}>
+          <div style={{ padding: "16px 5vw calc(24px + env(safe-area-inset-bottom, 0px))", background: shellBg, borderTop: "1px solid " + shellBorder }}>
             <button onClick={() => onClose(true)}
               style={{ background: accentColor, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
               Done
@@ -1495,11 +1557,11 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       };
 
       return (
-        <div style={{ minHeight: "100vh", background: shellBg, display: "flex", flexDirection: "column" }}>
+        <div style={{ minHeight: "var(--vh100)", background: shellBg, display: "flex", flexDirection: "column" }}>
           {/* Fixed header */}
-          <div style={{ padding: "52px 5vw 16px", background: shellBg, borderBottom: "1px solid " + shellBorder }}>
+          <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 5vw 16px", background: shellBg, borderBottom: "1px solid " + shellBorder }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <button onClick={() => onClose(false)} style={{ background: "none", border: "none", fontSize: 13, color: color, cursor: "pointer", padding: "0 0 12px 0", fontWeight: 500 }}>← Back</button>
+              <button onClick={() => onClose(false)} style={{ background: "none", border: "none", fontSize: 15, color: color, cursor: "pointer", padding: "0 16px 0 0", minHeight: 44, display: "inline-flex", alignItems: "center", fontWeight: 500 }}>← Back</button>
               <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
                 <button onClick={toggleMusic} style={{ background: musicOn ? accentColor : "transparent", border: "1px solid " + (musicOn ? accentColor : shellBorder), borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600, color: musicOn ? "#FFFFFF" : shellSubtext, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, transition: "all 0.2s" }}>
                   <span style={{ fontSize: 13 }}>{musicOn ? "♪" : "♩"}</span>
@@ -1576,7 +1638,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           </div>
 
           {/* Fixed footer — countdown + next */}
-          <div style={{ padding: "16px 5vw 32px", background: shellBg, borderTop: "1px solid " + shellBorder }}>
+          <div style={{ padding: "16px 5vw calc(24px + env(safe-area-inset-bottom, 0px))", background: shellBg, borderTop: "1px solid " + shellBorder }}>
             {isLast ? (
               <button onClick={handleAmenWithMusic}
                 style={{ background: color, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
@@ -1591,7 +1653,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 )}
                 <button onClick={() => { if (unlocked) { setStep(s => s + 1); window.scrollTo(0,0); } }}
                   disabled={!unlocked}
-                  style={{ flex: 1, background: unlocked ? color : "#DDE3F0", color: unlocked ? "#FFFFFF" : "#8A93A8", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: unlocked ? "pointer" : "not-allowed", transition: "all 0.3s" }}>
+                  style={{ flex: 1, background: unlocked ? color : "#DDE3F0", color: unlocked ? "#FFFFFF" : "#5F6880", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: unlocked ? "pointer" : "not-allowed", transition: "all 0.3s" }}>
                   {unlocked ? "Next →" : `Take your time... (${countdown}s)`}
                 </button>
               </div>
@@ -1698,7 +1760,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const dBg   = isDark ? "#0F1117" : "#EEF1F8";
       const dBorder = isDark ? "#2A2D3A" : "#DDE3F0";
       const dText = isDark ? "#F0F2F8" : "#1A1F2E";
-      const dStone = isDark ? "#6B7280" : "#8A93A8";
+      const dStone = isDark ? "#9AA3B8" : "#5F6880";
       const dBody = isDark ? "#C8CEDD" : "#2C3347";
       const [selected, setSelected] = React.useState(null);
       const [verse, setVerse] = React.useState(null);
@@ -1753,8 +1815,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       // Office detail view
       if (selected) {
         return (
-          <div style={{ padding: "5vw", paddingBottom: 100, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-            <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", fontSize: 13, color: selected.color, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>← Back</button>
+          <div style={{ padding: "5vw", paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)", paddingBottom: 100, maxWidth: 600, margin: "0 auto", width: "100%" }}>
+            <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", fontSize: 15, color: selected.color, cursor: "pointer", padding: "0 16px 0 0", minHeight: 44, display: "inline-flex", alignItems: "center", fontWeight: 500 }}>← Back</button>
 
             <div style={{ background: selected.id === "night" ? "#2D2A5E" : "#FFFFFF", borderRadius: 16, padding: "22px", marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: selected.id === "night" ? "rgba(255,255,255,0.4)" : dStone, textTransform: "uppercase", marginBottom: 6 }}>{selected.latin} · {selected.time}</div>
@@ -1786,7 +1848,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             </div>
 
             {/* Practice timer */}
-            <PracticeTimer practiceText={"Use this time to pray through the framework above in your own words. No script — just you and God."} />
+            <PracticeTimer practiceText={"Use this time to pray through the framework above in your own words. No script — just you and God."} isDark={isDark} />
 
             {/* Set reminder */}
             <div style={{ background: dCard, borderRadius: 14, padding: "18px 20px", marginTop: 16 }}>
@@ -1812,8 +1874,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       // Office overview
       return (
-        <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-          <button onClick={() => onClose(null)} style={{ background: "none", border: "none", fontSize: 13, color: "#6B5FD6", cursor: "pointer", padding: "0 0 4px 0", fontWeight: 500 }}>← Back to models</button>
+        <div style={{ padding: "5vw", paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
+          <button onClick={() => onClose(null)} style={{ background: "none", border: "none", fontSize: 15, color: "#6B5FD6", cursor: "pointer", padding: "0 16px 0 0", minHeight: 44, display: "inline-flex", alignItems: "center", fontWeight: 500 }}>← Back to models</button>
 
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: dStone, textTransform: "uppercase", marginBottom: 4, marginTop: 16 }}>Model 3</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: isDark ? "#F0F2F8" : "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 10 }}>The Daily Office</div>
@@ -1830,7 +1892,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: dStone, textTransform: "uppercase", marginBottom: 16 }}>The Four Offices</div>
 
           {DAILY_OFFICES.map(office => (
-            <div key={office.id} onClick={() => openOffice(office)}
+            <div role="button" tabIndex={0} onKeyDown={kbClick} key={office.id} onClick={() => openOffice(office)}
               style={{ background: office.id === "night" ? "#2D2A5E" : dCard, borderRadius: 14, padding: "18px 20px", marginBottom: 10, cursor: "pointer", transition: "all 0.15s" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: office.color + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>
@@ -1854,6 +1916,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
     // ── Psalms Guided Prayer (single type) ────────────────────────────────────
     function PsalmTypePrayerScreen({ psalmType, entries, onClose, isDark }) {
+      const dStone = isDark ? "#9AA3B8" : "#5F6880";
       const verse = React.useState(() => {
         const shuffled = [...psalmType.scriptures].sort(() => Math.random() - 0.5);
         return shuffled[0];
@@ -1887,6 +1950,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
     }
 
     function PsalmsFullPrayerScreen({ entries, onClose, isDark }) {
+      const dStone = isDark ? "#9AA3B8" : "#5F6880";
       const verses = React.useState(() =>
         PSALM_TYPES.reduce((acc, t) => {
           const shuffled = [...t.scriptures].sort(() => Math.random() - 0.5);
@@ -1928,6 +1992,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
     }
 
     function PsalmsModelScreen({ entries, onClose, isDark }) {
+      const dStone = isDark ? "#9AA3B8" : "#5F6880";
       const [selectedType, setSelectedType] = React.useState(null);
       const [showFullPrayer, setShowFullPrayer] = React.useState(false);
 
@@ -1937,8 +2002,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const typeColors = { praise: "#4A9E7F", lament: "#5B8DD9", penitence: "#9E6B8A", trust: "#B87333", thanksgiving: "#3D7EB0" };
 
       return (
-        <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-          <button onClick={() => onClose(null)} style={{ background: "none", border: "none", fontSize: 13, color: PSALM_COLOR, cursor: "pointer", padding: "0 0 4px 0", fontWeight: 500 }}>← Back to models</button>
+        <div style={{ padding: "5vw", paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
+          <button onClick={() => onClose(null)} style={{ background: "none", border: "none", fontSize: 15, color: PSALM_COLOR, cursor: "pointer", padding: "0 16px 0 0", minHeight: 44, display: "inline-flex", alignItems: "center", fontWeight: 500 }}>← Back to models</button>
 
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: dStone, textTransform: "uppercase", marginBottom: 4, marginTop: 16 }}>Model 4</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: isDark ? "#F0F2F8" : "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 10 }}>Praying the Psalms</div>
@@ -1990,6 +2055,24 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
 
     // ── Login Screen ──────────────────────────────────────────────────────────
+    // If any screen throws, show a calm recovery message instead of a blank page.
+    class ErrorBoundary extends React.Component {
+      constructor(props) { super(props); this.state = { failed: false }; }
+      static getDerivedStateFromError() { return { failed: true }; }
+      componentDidCatch(error, info) { console.error("Screen crashed:", error, info && info.componentStack); }
+      render() {
+        if (!this.state.failed) return this.props.children;
+        return (
+          <div role="alert" style={{ minHeight: "var(--vh100)", background: "#2D2A5E", color: "#FFFFFF", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", textAlign: "center", fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" }}>
+            <div style={{ fontSize: 36, marginBottom: 14 }} aria-hidden="true">🙏</div>
+            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Something went wrong on this screen</div>
+            <div style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.75)", marginBottom: 22, maxWidth: 320 }}>Your prayer board and progress are safe. Reload to pick up where you left off.</div>
+            <button onClick={() => window.location.reload()} style={{ background: "#FFFFFF", color: "#2D2A5E", border: "none", borderRadius: 12, padding: "14px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Reload Groundwork</button>
+          </div>
+        );
+      }
+    }
+
     // Supabase keeps the Google profile photo in user_metadata (not Firebase's photoURL).
     // Falls back to the person's initial if there's no photo or it fails to load.
     function UserAvatar({ user, border, accent, onClick }) {
@@ -1997,15 +2080,15 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const meta = user.user_metadata || {};
       const photo = meta.avatar_url || meta.picture;
       const initial = ((meta.full_name || meta.name || user.email || "?").trim()[0] || "?").toUpperCase();
-      const base = { width: 32, height: 32, borderRadius: "50%", cursor: "pointer", border: `2px solid ${border}`, flexShrink: 0 };
-      if (photo && !failed) {
-        return <img src={photo} alt="Your account — tap to sign out" referrerPolicy="no-referrer" onError={() => setFailed(true)} style={base} onClick={onClick} title="Sign out" />;
-      }
+      // A real button with a 44px tap target; the visible circle inside stays 32px.
+      const circle = { width: 32, height: 32, borderRadius: "50%", border: `2px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" };
       return (
-        <div role="button" aria-label="Your account — tap to sign out" onClick={onClick} title="Sign out"
-          style={{ ...base, background: accent, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>
-          {initial}
-        </div>
+        <button onClick={onClick} aria-label="Sign out of Groundwork" title="Sign out"
+          style={{ background: "none", border: "none", padding: 6, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+          {photo && !failed
+            ? <img src={photo} alt="" referrerPolicy="no-referrer" onError={() => setFailed(true)} style={{ ...circle, objectFit: "cover" }} />
+            : <span aria-hidden="true" style={{ ...circle, background: accent, color: "#FFFFFF", fontSize: 14, fontWeight: 700 }}>{initial}</span>}
+        </button>
       );
     }
 
@@ -2028,7 +2111,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       }
       if (!text) return null;
       return (
-        <div role="status" style={{ position: "fixed", left: 12, right: 12, bottom: 16, zIndex: 9999, background: bg, color: "#FFFFFF", borderRadius: 12, padding: "12px 14px", fontSize: 13, lineHeight: 1.5, display: "flex", alignItems: "center", gap: 12, boxShadow: "0 6px 24px rgba(0,0,0,0.35)" }}>
+        <div role="status" style={{ position: "fixed", left: 12, right: 12, bottom: "calc(76px + env(safe-area-inset-bottom, 0px))", zIndex: 9999, background: bg, color: "#FFFFFF", borderRadius: 12, padding: "12px 14px", fontSize: 13, lineHeight: 1.5, display: "flex", alignItems: "center", gap: 12, boxShadow: "0 6px 24px rgba(0,0,0,0.35)" }}>
           <div style={{ flex: 1 }}>{text}</div>
           {action && (
             <button onClick={action.fn} style={{ background: "rgba(255,255,255,0.18)", color: "#FFFFFF", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>{action.label}</button>
@@ -2056,7 +2139,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       };
 
       return (
-        <div style={{ minHeight: "100vh", background: "#2D2A5E", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", width: "100%" }}>
+        <div style={{ minHeight: "var(--vh100)", background: "#2D2A5E", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", width: "100%" }}>
           <div style={{ width: 64, height: 64, borderRadius: 18, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
             <span style={{ fontSize: 28 }}>🙏</span>
           </div>
@@ -2092,9 +2175,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
     function MoreModelsScreen({ onClose, onOpenDailyOffice, isDark }) {
       const C2 = THEMES[isDark ? 'dark' : 'light'];
       return (
-        <div style={{ minHeight: "100vh", background: C2.bg }}>
-          <div style={{ padding: "52px 5vw 20px", borderBottom: "1px solid " + C2.paper, background: C2.bg }}>
-            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 13, color: C2.accent, cursor: "pointer", padding: "0 0 12px 0", fontWeight: 500 }}>← Back</button>
+        <div style={{ minHeight: "var(--vh100)", background: C2.bg }}>
+          <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 5vw 20px", borderBottom: "1px solid " + C2.paper, background: C2.bg }}>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 15, color: C2.accent, cursor: "pointer", padding: "0 16px 0 0", minHeight: 44, display: "inline-flex", alignItems: "center", fontWeight: 500 }}>← Back</button>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: C2.stone, textTransform: "uppercase", marginBottom: 4 }}>More Models</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: C2.ink, letterSpacing: "-0.02em" }}>Explore more ways to pray</div>
           </div>
@@ -2187,7 +2270,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         }));
 
       if (steps.length === 0) return (
-        <div style={{ minHeight: "100vh", background: C2.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 5vw" }}>
+        <div style={{ minHeight: "var(--vh100)", background: C2.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 5vw" }}>
           <div style={{ fontSize: 40, marginBottom: 20 }}>🙏</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: C2.ink, marginBottom: 10, textAlign: "center" }}>Your board is empty</div>
           <div style={{ fontSize: 14, color: C2.stone, textAlign: "center", lineHeight: 1.7, marginBottom: 30 }}>
@@ -2314,7 +2397,17 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       React.useEffect(() => {
         document.body.style.background = isDark ? "#0F1117" : "#EEF1F8";
         document.body.style.color = isDark ? "#F0F2F8" : "#1A1F2E";
+        // Keep the phone's status bar / browser chrome matching the app when the in-app theme differs from the OS.
+        document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute("content", isDark ? "#0F1117" : "#EEF1F8"));
       }, [isDark]);
+
+      // Escape closes the erase/delete confirmation (unless it's mid-request).
+      React.useEffect(() => {
+        if (!dangerMode) return;
+        const onKey = (e) => { if (e.key === "Escape" && !dangerBusy) closeDanger(); };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+      }, [dangerMode, dangerBusy]);
 
       // ── Auth listener ──
       // Supabase re-announces the session every time the tab regains focus and on
@@ -2375,7 +2468,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             if (!merged[row.section]) return;
             merged[row.section].push({
               id: row.id, text: row.text, name: row.name || undefined, note: row.note || undefined,
-              fromSection: row.from_section || undefined, done: row.done, sample: row.sample, date: "Today",
+              fromSection: row.from_section || undefined, done: row.done, sample: row.sample, date: relDate(row.created_at),
             });
           });
           setEntries(merged);
@@ -2466,11 +2559,13 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       const isDark = darkMode === null ? systemDark : darkMode;
       const C = THEMES[isDark ? 'dark' : 'light'];
+      const danger = isDark ? "#FF8A80" : "#C0392B"; // red for text/outlines that stays readable on both themes
 
       const completed = segments.filter(s => s.complete).length;
 
       const logPrayer = (modelName) => {
-        setLastModel(modelName);
+        // Only the three teaching models are remembered for the "Model" shortcut — not the Prayer Board or Daily Office.
+        if (modelName === "The Lord's Prayer" || modelName === "The Tabernacle Prayer" || /Psalm/i.test(modelName)) setLastModel(modelName);
         const prayedAt = new Date().toISOString();
         setPrayerLog(prev => [{ id: prayedAt, model: modelName, date: prayedAt }, ...prev].slice(0, 90)); // keep 90 days
         // (user_id, prayed_at) is unique, so a retried save can never count the same session twice.
@@ -2480,7 +2575,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       // ── Show login if not signed in ──
       if (authLoading) return (
-        <div style={{ minHeight: "100vh", background: "#2D2A5E", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ minHeight: "var(--vh100)", background: "#2D2A5E", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Loading...</div>
         </div>
       );
@@ -2622,12 +2717,12 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       // ── Styles ──
       const navBtn = (active) => ({
-        flex: 1, padding: "14px 0", fontSize: 12, fontWeight: active ? 600 : 400,
+        flex: 1, minHeight: 56, padding: "10px 0", fontSize: 12, fontWeight: active ? 700 : 500,
         letterSpacing: "0.06em", textTransform: "uppercase", background: "none",
         border: "none", cursor: "pointer",
         color: active ? C.accent : C.stone,
-        borderBottom: active ? `2px solid ${C.accent}` : "2px solid transparent",
-        transition: "all 0.15s",
+        borderTop: active ? `3px solid ${C.accent}` : "3px solid transparent",
+        transition: "color 0.15s, border-color 0.15s",
       });
 
       const card = (active) => ({
@@ -2637,8 +2732,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       });
 
       const btn = (variant = "primary") => ({
-        background: variant === "primary" ? C.accent : variant === "sage" ? C.sage : "transparent",
-        color: variant === "ghost" ? C.stone : C.white,
+        background: variant === "primary" ? C.accentFill : variant === "sage" ? C.sageFill : "transparent",
+        color: variant === "ghost" ? C.stone : C.onAccent,
         border: variant === "ghost" ? `1px solid ${C.paper}` : "none",
         borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 600,
         cursor: "pointer", width: "100%", marginTop: 16,
@@ -2646,7 +2741,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       const outlineBtn = {
         background: "none", border: `1px solid ${C.accent}`, borderRadius: 10,
-        padding: "12px 20px", fontSize: 13, color: C.accent, cursor: "pointer",
+        minHeight: 48, padding: "12px 20px", fontSize: 14, color: C.accent, cursor: "pointer",
         fontWeight: 600, width: "100%", marginBottom: 20,
       };
 
@@ -2658,7 +2753,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       };
 
       const fastTypeCard = (sel) => ({
-        background: sel ? C.accent : C.white, borderRadius: 10, padding: "14px 16px",
+        background: sel ? C.accentFill : C.white, borderRadius: 10, padding: "14px 16px",
         cursor: "pointer", border: `1px solid ${sel ? C.accent : C.paper}`, transition: "all 0.15s",
       });
 
@@ -2675,7 +2770,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           if (!seg) return null;
           return (
             <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-              <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", fontSize: 13, color: accentColor, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>
+              <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", fontSize: 15, color: accentColor, cursor: "pointer", padding: "0 16px 0 0", minHeight: 44, display: "inline-flex", alignItems: "center", marginBottom: 8, fontWeight: 500 }}>
                 ← Back
               </button>
               <div style={{ background: C.white, borderRadius: 16, padding: 24, marginBottom: 0 }}>
@@ -2690,7 +2785,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   </div>
                 )}
               </div>
-              <PracticeTimer practiceText={seg.practice} />
+              <PracticeTimer practiceText={seg.practice} isDark={isDark} />
               <button onClick={() => isTabernacle ? markTabComplete(seg.id) : markComplete(seg.id)}
                 style={{ ...btn("primary"), background: accentColor, marginTop: 16 }}>
                 Mark complete
@@ -2704,15 +2799,15 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
             {/* Model switcher */}
             <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-              <div onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.accent, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.accent}` }}>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.accentFill, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.accent}` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 1</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.white }}>The Lord's Prayer</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.onAccent }}>The Lord's Prayer</div>
               </div>
-              <div onClick={() => setActiveModule("tabernacle")} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("tabernacle")} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 2</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>The Tabernacle Prayer</div>
               </div>
-              <div onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 3</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Praying the Psalms</div>
               </div>
@@ -2734,17 +2829,17 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             </div>
 
             <div style={{ height: 3, background: C.paper, borderRadius: 2, marginBottom: 8, overflow: "hidden" }}>
-              <div style={{ height: "100%", background: C.accent, borderRadius: 2, width: `${(completedCount / currentSegs.length) * 100}%`, transition: "width 0.4s" }} />
+              <div style={{ height: "100%", background: C.accentFill, borderRadius: 2, width: `${(completedCount / currentSegs.length) * 100}%`, transition: "width 0.4s" }} />
             </div>
             <div style={{ fontSize: 12, color: C.stone, marginBottom: 16 }}>{completedCount} of {currentSegs.length} sessions complete</div>
 
             <button onClick={() => setShowPrayer(true)}
-              style={{ background: C.accent, color: C.white, border: "none", borderRadius: 12, padding: "16px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 20, letterSpacing: "0.02em" }}>
+              style={{ background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 12, padding: "16px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 20, letterSpacing: "0.02em" }}>
               Pray this model
             </button>
 
             {currentSegs.map(seg => (
-              <div key={seg.id} style={card(seg.complete)} onClick={() => setSelected(seg.id)}>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} key={seg.id} style={card(seg.complete)} onClick={() => setSelected(seg.id)}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4, letterSpacing: "-0.01em" }}>"{seg.phrase}"</div>
@@ -2769,7 +2864,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             {/* More Models */}
             <div style={{ marginTop: 28 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 14 }}>More models</div>
-              <div onClick={() => setShowMoreModels(true)}
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setShowMoreModels(true)}
                 style={{ background: C.card, borderRadius: 14, padding: "18px 20px", cursor: "pointer", border: `1px solid ${C.paper}`, display: "flex", alignItems: "center", gap: 14 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: "#4A9E7F22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>+</div>
                 <div style={{ flex: 1 }}>
@@ -2789,15 +2884,15 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
             {/* Model switcher */}
             <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-              <div onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 1</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>The Lord's Prayer</div>
               </div>
-              <div onClick={() => setActiveModule("tabernacle")} style={{ flex: 1, background: tabAccent, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${tabAccent}` }}>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("tabernacle")} style={{ flex: 1, background: tabAccent, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${tabAccent}` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 2</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.white }}>The Tabernacle Prayer</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.onAccent }}>The Tabernacle Prayer</div>
               </div>
-              <div onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 3</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Praying the Psalms</div>
               </div>
@@ -2832,12 +2927,12 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
             {/* Pray using this model button */}
             <button onClick={() => setShowTabPrayer(true)}
-              style={{ background: tabAccent, color: C.white, border: "none", borderRadius: 12, padding: "16px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 20, letterSpacing: "0.02em" }}>
+              style={{ background: tabAccent, color: C.onAccent, border: "none", borderRadius: 12, padding: "16px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 20, letterSpacing: "0.02em" }}>
               Pray using this model
             </button>
 
             {currentSegs.map(seg => (
-              <div key={seg.id} onClick={() => setSelected(seg.id)}
+              <div role="button" tabIndex={0} onKeyDown={kbClick} key={seg.id} onClick={() => setSelected(seg.id)}
                 style={{ background: C.white, borderRadius: 12, padding: "18px 20px", marginBottom: 10, cursor: "pointer", border: `1px solid ${seg.complete ? tabAccent : "transparent"}`, transition: "all 0.15s" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
@@ -2867,7 +2962,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           const done = sectionEntries.filter(e => e.done);
           return (
             <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-              <button onClick={() => { setActiveSection(null); setShowAdd(false); }} style={{ background: "none", border: "none", fontSize: 13, color: C.accent, cursor: "pointer", padding: "0 0 20px 0", fontWeight: 500 }}>
+              <button onClick={() => { setActiveSection(null); setShowAdd(false); }} style={{ background: "none", border: "none", fontSize: 15, color: C.accent, cursor: "pointer", padding: "0 16px 0 0", minHeight: 44, display: "inline-flex", alignItems: "center", marginBottom: 8, fontWeight: 500 }}>
                 ← Back
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
@@ -2914,24 +3009,32 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                     </div>
                   ) : (
                     // View mode
-                    <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                      <div onClick={() => toggleDone(activeSection, e.id)} style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${C.paper}`, flexShrink: 0, marginTop: 2, cursor: "pointer" }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {(activeSection === "intercession" || activeSection === "forgiveness") && e.name && (
-                          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{e.name}</div>
-                        )}
-                        <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.5 }}>{e.text}</div>
-                        {e.sample && <div style={{ fontSize: 10, color: C.stone, marginTop: 4, fontStyle: "italic", opacity: 0.6 }}>Example — tap edit to make it yours</div>}
-                        <div style={{ fontSize: 11, color: C.stone, marginTop: 6 }}>Added {e.date}</div>
+                    <div>
+                      <div style={{ display: "flex", gap: 4, alignItems: "flex-start" }}>
+                        {/* 44px tap target around a 22px circle */}
+                        <button role="checkbox" aria-checked="false" aria-label={`Mark as ${activeSection === "confession" ? "confessed" : activeSection === "praise" ? "recorded" : "answered"}: ${e.text.slice(0, 60)}`}
+                          onClick={() => toggleDone(activeSection, e.id)}
+                          style={{ background: "none", border: "none", width: 44, height: 44, marginTop: -8, marginLeft: -10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                          <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${C.stone}`, display: "block" }} />
+                        </button>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {(activeSection === "intercession" || activeSection === "forgiveness") && e.name && (
+                            <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{e.name}</div>
+                          )}
+                          <div style={{ fontSize: 15, color: C.body, lineHeight: 1.55 }}>{e.text}</div>
+                          {e.sample && <div style={{ fontSize: 12, color: C.stone, marginTop: 4, fontStyle: "italic" }}>Example — tap Edit to make it yours</div>}
+                          <div style={{ fontSize: 12, color: C.stone, marginTop: 6 }}>Added {e.date}</div>
+                        </div>
                       </div>
-                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 10 }}>
                         <button onClick={() => startEdit(activeSection, e)}
-                          style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 8, padding: "5px 10px", fontSize: 11, color: C.stone, cursor: "pointer" }}>
+                          style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 10, minHeight: 44, padding: "0 18px", fontSize: 13, fontWeight: 600, color: C.ink, cursor: "pointer" }}>
                           Edit
                         </button>
-                        <button onClick={() => deleteEntry(activeSection, e.id)}
-                          style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 8, padding: "5px 10px", fontSize: 11, color: "#E57373", cursor: "pointer" }}>
-                          ✕
+                        <button onClick={() => { if (window.confirm("Delete this entry? This can't be undone.")) deleteEntry(activeSection, e.id); }}
+                          aria-label={`Delete: ${e.text.slice(0, 60)}`}
+                          style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 10, minHeight: 44, padding: "0 18px", fontSize: 13, fontWeight: 600, color: danger, cursor: "pointer" }}>
+                          Delete
                         </button>
                       </div>
                     </div>
@@ -2946,16 +3049,21 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   </div>
                   {done.map(e => (
                     <div key={e.id} style={{ background: C.card, borderRadius: 12, padding: "16px 18px", marginBottom: 10, display: "flex", gap: 12, alignItems: "flex-start", opacity: 0.55 }}>
-                      <div onClick={() => toggleDone(activeSection, e.id)} style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${sec.color}`, background: sec.color, flexShrink: 0, marginTop: 2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ color: "white", fontSize: 11, fontWeight: 700 }}>✓</span>
-                      </div>
+                      <button role="checkbox" aria-checked="true" aria-label={`Undo: ${e.text.slice(0, 60)}`}
+                        onClick={() => toggleDone(activeSection, e.id)}
+                        style={{ background: "none", border: "none", width: 44, height: 44, marginTop: -10, marginLeft: -12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                        <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: "50%", border: `2px solid ${sec.color}`, background: sec.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ color: "#FFFFFF", fontSize: 11, fontWeight: 700 }}>✓</span>
+                        </span>
+                      </button>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        {(activeSection === "intercession" || activeSection === "forgiveness") && e.name && <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, textDecoration: "line-through" }}>{e.name}</div>}
-                        <div style={{ fontSize: 13, color: C.stone, textDecoration: "line-through" }}>{e.text}</div>
+                        {(activeSection === "intercession" || activeSection === "forgiveness") && e.name && <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, textDecoration: "line-through" }}>{e.name}</div>}
+                        <div style={{ fontSize: 15, color: C.body, textDecoration: "line-through" }}>{e.text}</div>
                       </div>
-                      <button onClick={() => deleteEntry(activeSection, e.id)}
-                        style={{ background: "none", border: "none", fontSize: 14, color: C.stone, cursor: "pointer", flexShrink: 0, opacity: 0.6 }}>
-                        ✕
+                      <button onClick={() => { if (window.confirm("Delete this entry? This can't be undone.")) deleteEntry(activeSection, e.id); }}
+                        aria-label={`Delete: ${e.text.slice(0, 60)}`}
+                        style={{ background: "none", border: "none", width: 44, height: 44, marginTop: -10, marginRight: -12, fontSize: 16, color: C.stone, cursor: "pointer", flexShrink: 0 }}>
+                        <span aria-hidden="true">✕</span>
                       </button>
                     </div>
                   ))}
@@ -3043,7 +3151,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 {/* Day dots */}
                 <div style={{ display: "flex", gap: 4, marginTop: 8, justifyContent: "center" }}>
                   {Array.from({ length: weeklyGoal }).map((_, i) => (
-                    <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: i < daysThisWeek ? C.accent : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
+                    <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: i < daysThisWeek ? C.accentFill : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
                   ))}
                 </div>
 
@@ -3052,7 +3160,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   <div style={{ marginTop: 10, display: "flex", gap: 6, justifyContent: "center" }}>
                     {[2,3,4,5,6,7].map(n => (
                       <button key={n} onClick={() => { setWeeklyGoal(n); setShowGoalPicker(false); }}
-                        style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: weeklyGoal === n ? C.accent : "rgba(255,255,255,0.1)", color: "#FFFFFF", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                        style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: weeklyGoal === n ? C.accentFill : "rgba(255,255,255,0.1)", color: "#FFFFFF", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                         {n}
                       </button>
                     ))}
@@ -3081,25 +3189,26 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               <div style={{ fontSize: 13, color: C.body, lineHeight: 1.65, fontStyle: "italic" }}>"{todaysVerse.text}"</div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase" }}>Prayer Board</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {/* Just pray through the board */}
                 <button onClick={() => setShowBoardPrayer(true)}
-                  style={{ background: C.sage, color: C.white, border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em" }}>
-                  🙏 Pray board
+                  style={{ flex: 1, whiteSpace: "nowrap", background: C.sageFill, color: C.onAccent, border: "none", borderRadius: 22, padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                  🙏 Pray my board
                 </button>
                 {/* Pray using a model */}
                 <button onClick={() => {
                   const m = lastModel || "";
                   if (!m || m === "The Lord's Prayer") { setShowPrayer(true); }
                   else if (m === "The Tabernacle Prayer") { setShowTabPrayer(true); }
-                  else { setShowPsalms(true); }
-                }} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", letterSpacing: "0.02em" }}>
-                  {lastModel ? lastModel.replace("The ", "").split(" ")[0] : "Model"}
+                  else if (/Psalm/i.test(m)) { setShowPsalms(true); }
+                  else { setShowPrayer(true); }
+                }} style={{ flex: 1, whiteSpace: "nowrap", background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 22, padding: "8px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                  {!lastModel ? "Pray a model" : lastModel === "The Lord's Prayer" ? "Lord's Prayer" : lastModel === "The Tabernacle Prayer" ? "Tabernacle" : /Psalm/i.test(lastModel) ? "Psalms" : "Pray a model"}
                 </button>
-                <button onClick={() => setShowModelPicker(true)}
-                  style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 20, padding: "8px 12px", fontSize: 12, color: C.stone, cursor: "pointer", fontWeight: 500 }}>
+                <button onClick={() => setShowModelPicker(true)} aria-label="Choose a different prayer model" title="Choose a different model"
+                  style={{ background: "none", border: "1px solid " + C.paper, borderRadius: 22, padding: "8px 12px", fontSize: 14, color: C.ink, cursor: "pointer", fontWeight: 500 }}>
                   ↕
                 </button>
               </div>
@@ -3107,7 +3216,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             {SECTIONS.map(sec => {
               const count = entries[sec.id].filter(e => !e.done).length;
               return (
-                <div key={sec.id} onClick={() => { setActiveSection(sec.id); setShowAdd(false); }}
+                <div role="button" tabIndex={0} onKeyDown={kbClick} key={sec.id} onClick={() => { setActiveSection(sec.id); setShowAdd(false); }}
                   style={{ background: C.white, borderRadius: 14, padding: "18px 20px", marginBottom: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 14, border: "1px solid transparent", transition: "all 0.15s" }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: sec.color + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <div style={{ width: 10, height: 10, borderRadius: "50%", background: sec.color }} />
@@ -3171,7 +3280,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                         if (!merged[row.section]) return;
                         merged[row.section].push({
                           id: row.id, text: row.text, name: row.name || undefined, note: row.note || undefined,
-                          fromSection: row.from_section || undefined, done: row.done, sample: row.sample, date: "Today",
+                          fromSection: row.from_section || undefined, done: row.done, sample: row.sample, date: relDate(row.created_at),
                         });
                       });
                       setEntries(merged);
@@ -3206,8 +3315,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 16 }}>Choose your fast</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
                 {FAST_TYPES.map(ft => (
-                  <div key={ft.id} style={fastTypeCard(fastType === ft.id)} onClick={() => setFastType(ft.id)}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: fastType === ft.id ? C.white : C.ink, marginBottom: 2 }}>{ft.label}</div>
+                  <div role="button" tabIndex={0} onKeyDown={kbClick} key={ft.id} style={fastTypeCard(fastType === ft.id)} onClick={() => setFastType(ft.id)}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: fastType === ft.id ? C.onAccent : C.ink, marginBottom: 2 }}>{ft.label}</div>
                     <div style={{ fontSize: 11, color: fastType === ft.id ? "rgba(255,255,255,0.75)" : C.stone }}>{ft.desc}</div>
                   </div>
                 ))}
@@ -3215,6 +3324,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 12 }}>Intention (optional)</div>
               <textarea style={{ ...inputStyle, height: 80, resize: "none", lineHeight: 1.6 }} placeholder="What are you fasting for?" value={fastNotes} onChange={e => setFastNotes(e.target.value)} />
+              <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.6, marginBottom: 4 }}>
+                If you have a medical condition, are pregnant, or take medication, talk with your doctor before fasting. You can always end a fast early.
+              </div>
               <button disabled={!fastType} onClick={() => {
                   const startedAt = new Date().toISOString();
                   setFastActive(true);
@@ -3228,7 +3340,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             </>
           ) : (
             <>
-              <div style={{ background: C.dark, borderRadius: 14, padding: "20px 22px", marginBottom: 20, color: C.white }}>
+              <div style={{ background: C.dark, borderRadius: 14, padding: "20px 22px", marginBottom: 20, color: C.onAccent }}>
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>Fast in progress</div>
                 <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 4 }}><FastTimer startTime={fastStart} /></div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
@@ -3244,6 +3356,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               </div>
 
               <button onClick={() => {
+                  if (!window.confirm("End your fast now?")) return;
                   setFastActive(false); setFastType(null); setFastStart(null); setFastNotes("");
                   writeQueue.enqueue({ type: "upsert", table: "groundwork_fast", conflict: "user_id", key: "fast",
                     row: { user_id: user.id, active: false, fast_type: null, started_at: null, notes: "" } });
@@ -3366,7 +3479,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               ].map(opt => (
                 <button key={String(opt.value)} onClick={() => setDarkMode(opt.value)}
                   style={{ flex: 1, padding: "10px 8px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, transition: "all 0.2s",
-                    background: darkMode === opt.value ? C.accent : "transparent",
+                    background: darkMode === opt.value ? C.accentFill : "transparent",
                     color: darkMode === opt.value ? "#FFFFFF" : C.stone }}>
                   {opt.icon} {opt.label}
                 </button>
@@ -3381,16 +3494,16 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             {/* Frequency */}
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 12 }}>How often?</div>
             {freqOptions.map(f => (
-              <div key={f.id} onClick={() => {
+              <div role="button" tabIndex={0} onKeyDown={kbClick} key={f.id} onClick={() => {
                   const times = f.id === "2x" ? ["07:00","19:00"] : ["07:00"];
                   setSchedule({ ...schedule, freq: f.id, times });
                 }}
-                style={{ background: schedule.freq === f.id ? C.accent : C.white, borderRadius: 12, padding: "14px 18px", marginBottom: 8, cursor: "pointer", border: `1px solid ${schedule.freq === f.id ? C.accent : C.paper}`, display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.15s" }}>
+                style={{ background: schedule.freq === f.id ? C.accentFill : C.white, borderRadius: 12, padding: "14px 18px", marginBottom: 8, cursor: "pointer", border: `1px solid ${schedule.freq === f.id ? C.accent : C.paper}`, display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.15s" }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: schedule.freq === f.id ? C.white : C.ink }}>{f.label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: schedule.freq === f.id ? C.onAccent : C.ink }}>{f.label}</div>
                   <div style={{ fontSize: 12, color: schedule.freq === f.id ? "rgba(255,255,255,0.7)" : C.stone }}>{f.desc}</div>
                 </div>
-                {schedule.freq === f.id && <span style={{ color: C.white, fontSize: 16 }}>✓</span>}
+                {schedule.freq === f.id && <span style={{ color: C.onAccent, fontSize: 16 }}>✓</span>}
               </div>
             ))}
 
@@ -3400,8 +3513,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", margin: "20px 0 12px" }}>Which days?</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
                   {days.map(d => (
-                    <div key={d} onClick={() => toggleDay(d)}
-                      style={{ padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer", background: schedule.customDays.includes(d) ? C.accent : C.white, color: schedule.customDays.includes(d) ? C.white : C.ink, border: `1px solid ${schedule.customDays.includes(d) ? C.accent : C.paper}`, transition: "all 0.15s" }}>
+                    <div role="button" tabIndex={0} onKeyDown={kbClick} key={d} onClick={() => toggleDay(d)}
+                      style={{ padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer", background: schedule.customDays.includes(d) ? C.accentFill : C.white, color: schedule.customDays.includes(d) ? C.onAccent : C.ink, border: `1px solid ${schedule.customDays.includes(d) ? C.accent : C.paper}`, transition: "all 0.15s" }}>
                       {d}
                     </div>
                   ))}
@@ -3433,8 +3546,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", margin: "20px 0 12px" }}>Duration</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
                   {[10, 15, 20, 30, 45, 60].map(d => (
-                    <div key={d} onClick={() => setSchedule({ ...schedule, duration: d })}
-                      style={{ padding: "8px 16px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer", background: schedule.duration === d ? C.accent : C.white, color: schedule.duration === d ? C.white : C.ink, border: `1px solid ${schedule.duration === d ? C.accent : C.paper}`, transition: "all 0.15s" }}>
+                    <div role="button" tabIndex={0} onKeyDown={kbClick} key={d} onClick={() => setSchedule({ ...schedule, duration: d })}
+                      style={{ padding: "8px 16px", borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: "pointer", background: schedule.duration === d ? C.accentFill : C.white, color: schedule.duration === d ? C.onAccent : C.ink, border: `1px solid ${schedule.duration === d ? C.accent : C.paper}`, transition: "all 0.15s" }}>
                       {d}m
                     </div>
                   ))}
@@ -3446,7 +3559,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             {ready && (
               <div style={{ marginTop: 28 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 14 }}>Add to calendar</div>
-                <button onClick={generateICS} style={{ background: C.accent, color: C.white, border: "none", borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
+                <button onClick={generateICS} style={{ background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
                   ↓ Download .ics file
                 </button>
                 <button onClick={generateGoogleLink} style={{ background: C.white, color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%" }}>
@@ -3478,8 +3591,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 <div>
                   {/* Streak + today status */}
                   <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-                    <div style={{ flex: 1, background: prayedToday ? C.accent : C.white, borderRadius: 12, padding: "16px", textAlign: "center" }}>
-                      <div style={{ fontSize: 28, fontWeight: 800, color: prayedToday ? C.white : C.ink, letterSpacing: "-0.03em" }}>{streak}</div>
+                    <div style={{ flex: 1, background: prayedToday ? C.accentFill : C.white, borderRadius: 12, padding: "16px", textAlign: "center" }}>
+                      <div style={{ fontSize: 28, fontWeight: 800, color: prayedToday ? C.onAccent : C.ink, letterSpacing: "-0.03em" }}>{streak}</div>
                       <div style={{ fontSize: 11, fontWeight: 600, color: prayedToday ? "rgba(255,255,255,0.7)" : C.stone, textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 2 }}>Day streak</div>
                     </div>
                     <div style={{ flex: 1, background: prayedToday ? "#EEF8F4" : C.white, borderRadius: 12, padding: "16px", textAlign: "center", border: prayedToday ? `1px solid ${C.sage}` : `1px solid ${C.paper}` }}>
@@ -3514,7 +3627,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                               <div style={{ fontSize: 13, color: C.ink, fontWeight: 500, marginBottom: 2 }}>{e.model}</div>
                               <div style={{ fontSize: 11, color: C.stone }}>{dateStr} · {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                             </div>
-                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.accent, flexShrink: 0 }} />
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.accentFill, flexShrink: 0 }} />
                           </div>
                         );
                       })}
@@ -3546,11 +3659,11 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 />
                 <div style={{ display: "flex", gap: 8 }}>
                   <button onClick={() => window.open("sms:?body=" + encodeURIComponent(inviteMsg), "_blank")}
-                    style={{ flex: 1, background: C.sage, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ flex: 1, background: C.sageFill, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                     💬 Text
                   </button>
                   <button onClick={() => window.open("mailto:?subject=" + encodeURIComponent("I thought of you — Groundwork prayer app") + "&body=" + encodeURIComponent(inviteMsg), "_blank")}
-                    style={{ flex: 1, background: C.accent, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ flex: 1, background: C.accentFill, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                     ✉ Email
                   </button>
                   <button onClick={() => {
@@ -3564,7 +3677,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                         setCopied(true); setTimeout(() => setCopied(false), 2000);
                       });
                     }}
-                    style={{ flex: 1, background: copied ? C.sage : "transparent", color: copied ? "#FFFFFF" : C.stone, border: "1px solid " + C.paper, borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
+                    style={{ flex: 1, background: copied ? C.sageFill : "transparent", color: copied ? "#FFFFFF" : C.stone, border: "1px solid " + C.paper, borderRadius: 10, padding: "12px 8px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
                     {copied ? "Copied ✓" : "Copy"}
                   </button>
                 </div>
@@ -3579,7 +3692,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               Signed in as {user.email || "your account"}. Your prayer board is private to you.
             </div>
             <a href="privacy.html" target="_blank" rel="noopener noreferrer"
-              style={{ display: "block", textAlign: "center", textDecoration: "none", background: "none", border: "1px solid " + C.paper, borderRadius: 10, padding: "12px 16px", fontSize: 13, color: C.accent, fontWeight: 600, marginBottom: 8 }}>
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 44, textAlign: "center", textDecoration: "none", background: "none", border: "1px solid " + C.paper, borderRadius: 10, padding: "12px 16px", fontSize: 13, color: C.accent, fontWeight: 600, marginBottom: 8 }}>
               Read the Privacy Policy
             </a>
             <button onClick={() => {
@@ -3591,7 +3704,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               Sign out
             </button>
             <button onClick={() => { setDangerText(""); setDangerError(""); setDangerMode("erase"); }}
-              style={{ width: "100%", background: "none", border: "1px solid #C0392B", borderRadius: 10, padding: "12px 16px", fontSize: 13, color: "#C0392B", fontWeight: 600, cursor: "pointer", marginBottom: 8 }}>
+              style={{ width: "100%", background: "none", border: "1px solid " + danger, borderRadius: 10, padding: "12px 16px", fontSize: 13, color: danger, fontWeight: 600, cursor: "pointer", marginBottom: 8 }}>
               Erase my Groundwork data
             </button>
             <button onClick={() => { setDangerText(""); setDangerError(""); setDangerMode("delete"); }}
@@ -3631,7 +3744,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   <input id="danger-confirm" value={dangerText} onChange={e => setDangerText(e.target.value)} disabled={dangerBusy}
                     autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck={false}
                     style={{ ...inputStyle, marginBottom: 10 }} />
-                  {dangerError && <div style={{ fontSize: 12, color: "#C0392B", lineHeight: 1.5, marginBottom: 10 }}>{dangerError}</div>}
+                  {dangerError && <div style={{ fontSize: 12, color: danger, lineHeight: 1.5, marginBottom: 10 }}>{dangerError}</div>}
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={closeDanger} disabled={dangerBusy}
                       style={{ flex: 1, background: "none", border: "1px solid " + C.paper, borderRadius: 10, padding: "13px 12px", fontSize: 14, color: C.ink, fontWeight: 600, cursor: dangerBusy ? "not-allowed" : "pointer" }}>
@@ -3653,7 +3766,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       // ── Homepage ─────────────────────────────────────────────────────────────
       const renderHome = () => (
-        <div style={{ minHeight: "100vh", width: "100%", background: C.bg, display: "flex", flexDirection: "column" }}>
+        <div style={{ minHeight: "var(--vh100)", width: "100%", background: C.bg, display: "flex", flexDirection: "column" }}>
 
           {/* Hero */}
           <div style={{ background: C.dark, padding: "64px 5vw 40px", position: "relative", overflow: "hidden" }}>
@@ -3732,7 +3845,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               ].map((step, i) => (
                 <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: i < 2 ? 20 : 0 }}>
                   <div style={{ width: 32, height: 32, borderRadius: "50%", background: step.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: C.white }}>{step.num}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: C.onAccent }}>{step.num}</span>
                   </div>
                   <div style={{ paddingTop: 4 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, marginBottom: 4 }}>{step.title}</div>
@@ -3761,7 +3874,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 setHasSeenOnboarding(true);
                 setTab("board");
               }}
-              style={{ background: C.accent, color: C.white, border: "none", borderRadius: 14, padding: "18px 24px", fontSize: 16, fontWeight: 700, cursor: "pointer", width: "100%", letterSpacing: "-0.01em", marginBottom: 12 }}>
+              style={{ background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 14, padding: "18px 24px", fontSize: 16, fontWeight: 700, cursor: "pointer", width: "100%", letterSpacing: "-0.01em", marginBottom: 12 }}>
               {hasSeenOnboarding ? "Back to app" : "Get started"}
             </button>
             {!hasSeenOnboarding && (
@@ -3773,17 +3886,20 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         </div>
       );
 
-      const headerTitle = { learn: "The Lord's Prayer", board: "Prayer Board", fast: "Fasting" };
+      const headerTitle = { learn: activeModule === "tabernacle" ? "The Tabernacle Prayer" : "The Lord's Prayer", board: "Prayer Board", fast: "Fasting" };
+      // Guided prayers and model screens take over the whole phone — no tab bar there.
+      const immersive = showBoardPrayer || showMoreModels || showDailyOffice || showPsalms || showTabPrayer || showPrayer;
 
       return (
-        <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", background: C.bg, minHeight: "100vh", width: "100%", color: C.ink }}>
+        <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", background: C.bg, minHeight: "var(--vh100)", width: "100%", color: C.ink, paddingBottom: immersive ? 0 : "calc(60px + env(safe-area-inset-bottom, 0px))" }}>
           <SyncBanner loadError={loadError} onRetryLoad={() => setReloadKey(k => k + 1)} />
-          {/* Header */}
-          <div style={{ padding: "52px 5vw 20px", borderBottom: `1px solid ${C.paper}`, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          {/* Header (hidden on full-screen prayer/model screens, which have their own) */}
+          {!immersive && (
+          <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 5vw 20px", borderBottom: `1px solid ${C.paper}`, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: C.stone, textTransform: "uppercase", marginBottom: 4 }}>Groundwork</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: "-0.02em" }}>
-                {showSettings ? "Schedule" : headerTitle[tab]}
+                {showSettings ? "Settings" : headerTitle[tab]}
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -3795,22 +3911,27 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 }} />
               )}
               <button onClick={() => { setShowSettings(false); setShowHome(true); }}
-                title="How it works"
-                style={{ background: C.paper, border: "none", borderRadius: 10, width: 38, height: 38, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0, marginBottom: 2 }}>
-                ?
+                title="How it works" aria-label="How Groundwork works"
+                style={{ background: C.paper, color: C.ink, border: "none", borderRadius: 12, width: 44, height: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 600, flexShrink: 0 }}>
+                <span aria-hidden="true">?</span>
               </button>
-              <button onClick={() => setShowSettings(!showSettings)} style={{ background: showSettings ? C.accent : C.paper, border: "none", borderRadius: 10, width: 38, height: 38, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, marginBottom: 2 }}>
-                {showSettings ? "✕" : "⚙"}
+              <button onClick={() => setShowSettings(!showSettings)}
+                aria-label={showSettings ? "Close settings" : "Open settings"} aria-pressed={showSettings}
+                style={{ background: showSettings ? C.accentFill : C.paper, color: showSettings ? "#FFFFFF" : C.ink, border: "none", borderRadius: 12, width: 44, height: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+                <span aria-hidden="true">{showSettings ? "✕" : "⚙"}</span>
               </button>
             </div>
           </div>
+          )}
 
           {/* Nav */}
-          <nav style={{ display: "flex", borderBottom: `1px solid ${C.paper}`, background: C.bg, position: "sticky", top: 0, zIndex: 10 }}>
+          {!immersive && (
+          <nav className="bottom-nav" aria-label="Main" style={{ display: "flex", borderTop: `1px solid ${C.paper}`, background: C.bg, position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 50, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
             {[["learn","Learn"],["board","Board"],["fast","Fast"]].map(([id, label]) => (
-              <button key={id} style={navBtn(tab === id)} onClick={() => { setTab(id); setShowHome(false); setShowSettings(false); setShowTabPrayer(false); setShowPrayer(false); setShowPsalms(false); setShowModelPicker(false); setShowMoreModels(false); setShowDailyOffice(false); setShowBoardPrayer(false); }}>{label}</button>
+              <button key={id} aria-current={tab === id && !showHome && !showSettings ? "page" : undefined} style={navBtn(tab === id)} onClick={() => { setTab(id); setShowHome(false); setShowSettings(false); setShowTabPrayer(false); setShowPrayer(false); setShowPsalms(false); setShowModelPicker(false); setShowMoreModels(false); setShowDailyOffice(false); setShowBoardPrayer(false); }}>{label}</button>
             ))}
           </nav>
+          )}
 
           {showHome ? renderHome() : showBoardPrayer ? (
             <BoardPrayerScreen entries={entries} onClose={(completed) => { if (completed) logPrayer("Prayer Board"); setShowBoardPrayer(false); }} isDark={isDark} />
@@ -3836,7 +3957,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           {/* Testimony Prompt Modal */}
           {testimonyPrompt && (
             <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-              <div style={{ background: C.card, borderRadius: "20px 20px 0 0", padding: "24px 24px 40px", width: "100%", maxWidth: 600 }}>
+              <div style={{ background: C.card, borderRadius: "20px 20px 0 0", padding: "24px 24px calc(32px + env(safe-area-inset-bottom, 0px))", width: "100%", maxWidth: 600 }}>
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: C.paper, margin: "0 auto 20px" }} />
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.sage, textTransform: "uppercase", marginBottom: 8 }}>Answered prayer</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: C.ink, letterSpacing: "-0.02em", marginBottom: 6 }}>God came through.</div>
@@ -3856,7 +3977,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid " + C.paper, background: C.bg, fontSize: 14, color: C.ink, marginBottom: 16, boxSizing: "border-box", outline: "none", fontFamily: "inherit", lineHeight: 1.65, resize: "none", minHeight: 80 }}
                 />
                 <button onClick={addTestimony}
-                  style={{ background: C.sage, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "14px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
+                  style={{ background: C.sageFill, color: "#FFFFFF", border: "none", borderRadius: 10, padding: "14px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 10 }}>
                   Add to Testimonies
                 </button>
                 <button onClick={skipTestimony}
@@ -3869,7 +3990,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           {/* Model Picker Modal */}
           {showModelPicker && (
             <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setShowModelPicker(false)}>
-              <div style={{ background: C.white, borderRadius: "20px 20px 0 0", padding: "24px 24px 40px", width: "100%", maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+              <div style={{ background: C.white, borderRadius: "20px 20px 0 0", padding: "24px 24px calc(32px + env(safe-area-inset-bottom, 0px))", width: "100%", maxWidth: 600 }} onClick={e => e.stopPropagation()}>
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: C.paper, margin: "0 auto 20px" }} />
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 16 }}>Choose a model</div>
                 {[
@@ -3877,7 +3998,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   { label: "The Tabernacle Prayer", sub: "A journey deeper into His presence", color: "#B87333", fn: () => { setShowModelPicker(false); setShowTabPrayer(true); } },
                   { label: "Praying the Psalms", sub: "Honest prayer through every posture", color: "#3D7EB0", fn: () => { setShowModelPicker(false); setShowPsalms(true); } },
                 ].map((m, i) => (
-                  <div key={i} onClick={m.fn}
+                  <div role="button" tabIndex={0} onKeyDown={kbClick} key={i} onClick={m.fn}
                     style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 12, marginBottom: 8, cursor: "pointer", background: C.bg, border: "1px solid " + C.paper }}>
                     <div style={{ width: 10, height: 10, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
                     <div>
@@ -3893,7 +4014,13 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    ReactDOM.createRoot(document.getElementById("root")).render(<ErrorBoundary><App /></ErrorBoundary>);
+  </script>
+  <script>
+    // Offline support: saves the app on this device so it opens without a connection.
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+    }
   </script>
 </body>
 </html>
