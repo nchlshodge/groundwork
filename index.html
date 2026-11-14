@@ -47,6 +47,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
+    /* Lexend: a typeface designed for easy reading (hosted with the app, so nothing is fetched from Google). */
+    @font-face { font-family: "Lexend"; src: url("fonts/Lexend-latin.woff2") format("woff2"); font-weight: 300 700; font-style: normal; font-display: swap; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     /* Full-screen height that tracks the visible area as the phone's URL bar shows/hides (100vh overflows it). */
     :root { --vh100: 100vh; }
@@ -54,14 +56,40 @@
     html, body, #root { width: 100%; min-height: 100%; }
     body {
       background: #EEF1F8;
-      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      font-family: 'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       -webkit-font-smoothing: antialiased;
+      background-repeat: no-repeat; background-attachment: fixed;
       -webkit-text-size-adjust: 100%;
       overflow-x: hidden;
     }
     button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
     textarea, input { font-family: inherit; -webkit-appearance: none; border-radius: 0; }
     ::-webkit-scrollbar { width: 0; }
+
+    /* ── Still Waters: wave dividers and the pool ── */
+    /* A single soft wave line between rows (drawn as a mask so it takes any colour). */
+    .ripple { height: 6px; margin: 0 18px; background: var(--ripple, rgba(107,95,214,0.3)); opacity: .8;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 6'%3E%3Cpath d='M0 3 Q6 0 12 3 T24 3' fill='none' stroke='black' stroke-width='1.1'/%3E%3C/svg%3E") repeat-x center / 24px 6px;
+              mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 6'%3E%3Cpath d='M0 3 Q6 0 12 3 T24 3' fill='none' stroke='black' stroke-width='1.1'/%3E%3C/svg%3E") repeat-x center / 24px 6px; }
+    /* The pool: two layers of water whose height is the week's progress. */
+    .pool { position: relative; overflow: hidden; }
+    .pool-water { position: absolute; left: 0; right: 0; bottom: 0; transition: height .9s cubic-bezier(.22,1,.36,1); }
+    .pool-water::before { content: ""; position: absolute; left: 0; right: -120px; top: -13px; height: 26px; background: inherit;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 26'%3E%3Cpath d='M0 13 Q30 0 60 13 T120 13 V26 H0Z'/%3E%3C/svg%3E") repeat-x 0 0 / 120px 26px;
+              mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 26'%3E%3Cpath d='M0 13 Q30 0 60 13 T120 13 V26 H0Z'/%3E%3C/svg%3E") repeat-x 0 0 / 120px 26px;
+      animation: drift 14s linear infinite; }
+    .pool-water.back::before { animation-duration: 22s; animation-direction: reverse; }
+    @keyframes drift { from { transform: translateX(0); } to { transform: translateX(-120px); } }
+    /* The edge of a primary button where the water catches the light. */
+    /* Still Waters: labels speak in plain sentence case, never small caps. */
+    [style*="text-transform: uppercase"] { text-transform: none !important; letter-spacing: 0 !important; }
+    [style*="text-transform: uppercase"][style*="font-size: 10px"],
+    [style*="text-transform: uppercase"][style*="font-size: 11px"],
+    [style*="text-transform: uppercase"][style*="font-size: 12px"] { font-size: 13px !important; }
+    .wave-edge { position: absolute; left: 0; right: -120px; bottom: -8px; height: 26px; background: rgba(255,255,255,0.16); pointer-events: none;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 26'%3E%3Cpath d='M0 13 Q30 0 60 13 T120 13 V26 H0Z'/%3E%3C/svg%3E") repeat-x 0 0 / 120px 26px;
+              mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 26'%3E%3Cpath d='M0 13 Q30 0 60 13 T120 13 V26 H0Z'/%3E%3C/svg%3E") repeat-x 0 0 / 120px 26px;
+      animation: drift 18s linear infinite; }
 
     /* ── Mobile feel ── */
     /* Tapping a control fires immediately (no double-tap-zoom wait) and long-press doesn't select its label. */
@@ -71,7 +99,7 @@
       input, textarea, select { font-size: 16px !important; }
       /* Every tap target is at least 44px tall on a touch screen (Apple/WCAG guidance). */
       button, [role="button"] { min-height: 44px; min-width: 44px; }
-      button:not([role="checkbox"]), [role="button"] { display: inline-flex; align-items: center; justify-content: center; }
+      button:not([role="checkbox"]) { display: inline-flex; align-items: center; justify-content: center; }
     }
     /* Press feedback on touch, since the browser's own tap highlight is turned off. */
     button:not(:disabled):active, [role="button"]:active { opacity: 0.72; }
@@ -349,6 +377,8 @@
         ink:    "#1A1F2E",
         bg:     "#EEF1F8",
         paper:  "#DDE3F0",
+        accentText: "#5B4FC4",
+        shadow: "0 6px 22px rgba(45,42,94,0.08)",
         accent: "#6B5FD6",
         sage:   "#4A9E7F",
         stone:  "#5F6880",
@@ -360,6 +390,10 @@
         inputBorder: "#DDE3F0",
         inputText: "#1A1F2E",
         navBg:  "#EEF1F8",
+        ground:   "linear-gradient(180deg,#F6F8FC 0%,#EEF1F8 55%,#DDE3F0 100%)",
+        water:    "#A9C3EC",   // tint of the section blue
+        water2:   "#C9D6F2",
+        sun:      "#D9A066",   // tint of the copper: today / answered
         accentFill: "#6B5FD6",   // button/selected-chip background (white text = 4.97:1)
         sageFill:   "#33826A",   // sage button background (white text = 4.9:1)
         onAccent:   "#FFFFFF",   // text on accentFill / sageFill / dark panels
@@ -368,6 +402,8 @@
         ink:    "#F0F2F8",
         bg:     "#0F1117",
         paper:  "#2A2D3A",
+        accentText: "#A79DFF",
+        shadow: "none",
         accent: "#7C6FE8",
         sage:   "#5BB891",
         stone:  "#9AA3B8",
@@ -379,6 +415,10 @@
         inputBorder: "#2A2D3A",
         inputText: "#F0F2F8",
         navBg:  "#0F1117",
+        ground:   "linear-gradient(180deg,#171B2E 0%,#0F1117 55%,#0B0D14 100%)",
+        water:    "#3E4F86",
+        water2:   "#2B3866",
+        sun:      "#D9A066",
         accentFill: "#6B5FD6",
         sageFill:   "#33826A",
         onAccent:   "#FFFFFF",
@@ -1290,7 +1330,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const feText = isDark ? "#F0F2F8" : "#1A1F2E";
     const feStone = isDark ? "#9AA3B8" : "#5F6880";
     if (items.length === 0) return (
-        <div style={{ fontSize: 13, color: feStone, fontStyle: "italic", padding: "8px 0" }}>
+        <div style={{ fontSize: 13, color: feStone, padding: "8px 0" }}>
           Nothing added yet — head to your board to add some.
         </div>
       );
@@ -1458,7 +1498,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const color = current.color || accentColor || "#6B5FD6";
 
       // Notify screen
-      const shellBg = isDark ? "#0F1117" : "#EEF1F8";
+      const shellBg = isDark ? THEMES.dark.ground : THEMES.light.ground;
       const shellCard = isDark ? "#1C1F2A" : "#FFFFFF";
       const shellBorder = isDark ? "#2A2D3A" : "#DDE3F0";
       const shellText = isDark ? "#F0F2F8" : "#1A1F2E";
@@ -1468,9 +1508,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       if (showNotify) return (
         <div style={{ minHeight: "var(--vh100)", background: shellBg, display: "flex", flexDirection: "column" }}>
-          <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 5vw 20px", borderBottom: "1px solid " + shellBorder, background: shellBg }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: shellSubtext, textTransform: "uppercase", marginBottom: 4 }}>You prayed for these people</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: shellText, letterSpacing: "-0.02em" }}>Want to let them know?</div>
+          <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 5vw 12px" }}>
+            <div style={{ fontSize: 24, fontWeight: 600, color: shellText, letterSpacing: "-0.01em" }}>Want to let them know?</div>
+            <div style={{ fontSize: 14, color: shellSubtext, marginTop: 4 }}>You prayed for these people.</div>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "24px 5vw", maxWidth: 600, margin: "0 auto", width: "100%" }}>
             <div style={{ fontSize: 13, color: shellSubtext, lineHeight: 1.6, marginBottom: 24 }}>
@@ -1546,9 +1586,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               </div>
             ))}
           </div>
-          <div style={{ padding: "16px 5vw calc(24px + env(safe-area-inset-bottom, 0px))", background: shellBg, borderTop: "1px solid " + shellBorder }}>
+          <div style={{ padding: "12px 5vw calc(24px + env(safe-area-inset-bottom, 0px))" }}>
             <button onClick={() => onClose(true)}
-              style={{ background: accentColor, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
+              style={{ background: accentColor, color: "#FFFFFF", border: "none", borderRadius: 26, padding: "18px 24px", fontSize: 17, fontWeight: 600, cursor: "pointer", width: "100%" }}>
               Done
             </button>
           </div>
@@ -1584,7 +1624,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       return (
         <div style={{ minHeight: "var(--vh100)", background: shellBg, display: "flex", flexDirection: "column" }}>
           {/* Fixed header */}
-          <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 5vw 16px", background: shellBg, borderBottom: "1px solid " + shellBorder }}>
+          <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 5vw 12px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <button onClick={() => onClose(false)} style={{ background: "none", border: "none", fontSize: 15, color: color, cursor: "pointer", padding: "0 16px 0 0", minHeight: 44, display: "inline-flex", alignItems: "center", fontWeight: 500 }}>← Back</button>
               <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
@@ -1606,8 +1646,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 )}
               </div>
             </div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: shellSubtext, textTransform: "uppercase", marginBottom: 4 }}>Guided Prayer</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: shellText, letterSpacing: "-0.02em" }}>{title}</div>
+            <div style={{ fontSize: 24, fontWeight: 600, color: shellText, letterSpacing: "-0.01em" }}>{title}</div>
           </div>
 
           {/* Scrollable content */}
@@ -1618,22 +1657,20 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             <div key={step} className="fade-in">
               {/* Section header */}
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: color, textTransform: "uppercase", marginBottom: 6 }}>
-                  {step + 1} of {steps.length}
-                </div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: shellText, letterSpacing: "-0.02em", marginBottom: 4 }}>
+                <div style={{ fontSize: 22, fontWeight: 600, color: shellText, letterSpacing: "-0.01em", marginBottom: 4 }}>
                   {current.title}
                 </div>
                 {current.subtitle && (
-                  <div style={{ fontSize: 13, color: shellSubtext, fontStyle: "italic" }}>"{current.subtitle}"</div>
+                  <div style={{ fontSize: 14, color: shellSubtext, fontWeight: 300 }}>“{current.subtitle}”</div>
                 )}
+                <div style={{ fontSize: 13, color: color, marginTop: 6 }}>{step + 1} of {steps.length}</div>
               </div>
 
               {/* Scripture */}
               {(current.scriptures || (current.scripture ? [current.scripture] : [])).map((s, i) => (
-                <div key={i} style={{ background: color + "15", borderLeft: `3px solid ${color}`, borderRadius: "0 10px 10px 0", padding: "12px 14px", marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: color, marginBottom: 4 }}>{s.ref}</div>
-                  <div style={{ fontSize: 13, color: shellBody, lineHeight: 1.65, fontStyle: "italic" }}>"{s.text}"</div>
+                <div key={i} style={{ background: color + "15", borderRadius: 22, padding: "16px 18px", marginBottom: 16 }}>
+                  <div style={{ fontSize: 14, color: shellBody, lineHeight: 1.75, fontWeight: 300 }}>“{s.text}”</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: color, marginTop: 8 }}>{s.ref}</div>
                 </div>
               ))}
 
@@ -1644,10 +1681,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
               {/* Board entries */}
               {current.entries && current.entries.length > 0 && (
-                <div style={{ background: shellCard, borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
+                <div style={{ background: shellCard, borderRadius: 24, padding: "18px 20px", marginBottom: 16 }}>
                   {current.entrySections ? current.entrySections.map((sec, si) => (
                     <div key={si}>
-                      {si > 0 && <div style={{ height: 1, background: "#DDE3F0", margin: "14px 0" }} />}
+                      {si > 0 && <div className="ripple" aria-hidden="true" style={{ margin: "16px 0" }} />}
                       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: shellSubtext, textTransform: "uppercase", marginBottom: 10 }}>{sec.label}</div>
                       <FadeEntryList items={sec.items} color={sec.color} shownKey={sec.key} shown={shown} onShowMore={showMore} isDark={isDark} />
                     </div>
@@ -1663,10 +1700,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           </div>
 
           {/* Fixed footer — countdown + next */}
-          <div style={{ padding: "16px 5vw calc(24px + env(safe-area-inset-bottom, 0px))", background: shellBg, borderTop: "1px solid " + shellBorder }}>
+          <div style={{ padding: "12px 5vw calc(24px + env(safe-area-inset-bottom, 0px))" }}>
             {isLast ? (
               <button onClick={handleAmenWithMusic}
-                style={{ background: color, color: "#FFFFFF", border: "none", borderRadius: 12, padding: "16px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
+                style={{ background: color, color: "#FFFFFF", border: "none", borderRadius: 26, padding: "18px 24px", fontSize: 17, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                 Amen
               </button>
             ) : (
@@ -1707,7 +1744,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           {kingdomScriptures.map((s, i) => (
             <div key={i} style={{ background: isDark ? "#1C1F2A" : "#EEF1F8", borderLeft: "3px solid #6B5FD6", borderRadius: "0 8px 8px 0", padding: "12px 14px", marginBottom: 10 }}>
               <div style={{ fontSize: 12, color: "#6B5FD6", fontWeight: 600, marginBottom: 4 }}>{s.ref}</div>
-              <div style={{ fontSize: 13, color: isDark ? "#C8CEDD" : "#2C3347", lineHeight: 1.65, fontStyle: "italic" }}>"{s.text}"</div>
+              <div style={{ fontSize: 13, color: isDark ? "#C8CEDD" : "#2C3347", lineHeight: 1.65 }}>"{s.text}"</div>
             </div>
           ))}
         </div>
@@ -1715,7 +1752,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       const renderDoxologyExtra = () => (
         <div style={{ background: "#2D2A5E", borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontStyle: "italic", marginBottom: 10 }}>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 10 }}>
             "For yours is the kingdom and the power and the glory forever. Amen."
           </div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.7 }}>
@@ -1763,7 +1800,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       const renderHolyExtra = () => (
         <div style={{ background: "#2D2A5E", borderRadius: 14, padding: "16px 18px", marginTop: 16 }}>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontStyle: "italic", textAlign: "center" }}>Set a timer. Say nothing. Just remain.</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", textAlign: "center" }}>Set a timer. Say nothing. Just remain.</div>
         </div>
       );
 
@@ -1846,7 +1883,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             <div style={{ background: selected.id === "night" ? "#2D2A5E" : "#FFFFFF", borderRadius: 16, padding: "22px", marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: selected.id === "night" ? "rgba(255,255,255,0.4)" : dStone, textTransform: "uppercase", marginBottom: 6 }}>{selected.latin} · {selected.time}</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: selected.id === "night" ? "#FFFFFF" : isDark ? "#F0F2F8" : "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 6 }}>{selected.name}</div>
-              <div style={{ fontSize: 13, color: selected.id === "night" ? "rgba(255,255,255,0.55)" : dStone, fontStyle: "italic", marginBottom: 20 }}>{selected.tag}</div>
+              <div style={{ fontSize: 13, color: selected.id === "night" ? "rgba(255,255,255,0.55)" : dStone, marginBottom: 20 }}>{selected.tag}</div>
               <div style={{ height: 1, background: selected.id === "night" ? "rgba(255,255,255,0.1)" : "#DDE3F0", marginBottom: 20 }} />
               <div style={{ fontSize: 14, lineHeight: 1.8, color: selected.id === "night" ? "rgba(255,255,255,0.8)" : isDark ? "#C8CEDD" : "#2C3347", whiteSpace: "pre-line" }}>{selected.teaching}</div>
             </div>
@@ -1855,7 +1892,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             {verse && (
               <div style={{ background: selected.color + "18", borderLeft: `3px solid ${selected.color}`, borderRadius: "0 12px 12px 0", padding: "14px 16px", marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: selected.color, textTransform: "uppercase", marginBottom: 6 }}>{verse.ref}</div>
-                <div style={{ fontSize: 14, lineHeight: 1.7, color: isDark ? "#C8CEDD" : "#2C3347", fontStyle: "italic" }}>"{verse.text}"</div>
+                <div style={{ fontSize: 14, lineHeight: 1.7, color: isDark ? "#C8CEDD" : "#2C3347" }}>"{verse.text}"</div>
               </div>
             )}
 
@@ -1901,8 +1938,6 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       return (
         <div style={{ padding: "5vw", paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
           <button onClick={() => onClose(null)} style={{ background: "none", border: "none", fontSize: 15, color: "#6B5FD6", cursor: "pointer", padding: "0 16px 0 0", minHeight: 44, display: "inline-flex", alignItems: "center", fontWeight: 500 }}>← Back to models</button>
-
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: dStone, textTransform: "uppercase", marginBottom: 4, marginTop: 16 }}>Model 3</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: isDark ? "#F0F2F8" : "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 10 }}>The Daily Office</div>
 
           <div style={{ background: dCard, borderRadius: 14, padding: "18px 20px", marginBottom: 24 }}>
@@ -2029,8 +2064,6 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       return (
         <div style={{ padding: "5vw", paddingTop: "calc(env(safe-area-inset-top, 0px) + 16px)", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
           <button onClick={() => onClose(null)} style={{ background: "none", border: "none", fontSize: 15, color: PSALM_COLOR, cursor: "pointer", padding: "0 16px 0 0", minHeight: 44, display: "inline-flex", alignItems: "center", fontWeight: 500 }}>← Back to models</button>
-
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: dStone, textTransform: "uppercase", marginBottom: 4, marginTop: 16 }}>Model 4</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: isDark ? "#F0F2F8" : "#1A1F2E", letterSpacing: "-0.02em", marginBottom: 10 }}>Praying the Psalms</div>
 
           <div style={{ background: isDark ? "#1C1F2A" : "#FFFFFF", borderRadius: 14, padding: "18px 20px", marginBottom: 16 }}>
@@ -2088,7 +2121,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       render() {
         if (!this.state.failed) return this.props.children;
         return (
-          <div role="alert" style={{ minHeight: "var(--vh100)", background: "#2D2A5E", color: "#FFFFFF", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", textAlign: "center", fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" }}>
+          <div role="alert" style={{ minHeight: "var(--vh100)", background: "#2D2A5E", color: "#FFFFFF", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", textAlign: "center", fontFamily: "'Lexend', -apple-system, BlinkMacSystemFont, sans-serif" }}>
             <div style={{ fontSize: 36, marginBottom: 14 }} aria-hidden="true">🙏</div>
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Something went wrong on this screen</div>
             <div style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.75)", marginBottom: 22, maxWidth: 320 }}>Your prayer board and progress are safe. Reload to pick up where you left off.</div>
@@ -2203,7 +2236,6 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         <div style={{ minHeight: "var(--vh100)", background: C2.bg }}>
           <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 5vw 20px", borderBottom: "1px solid " + C2.paper, background: C2.bg }}>
             <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 15, color: C2.accent, cursor: "pointer", padding: "0 16px 0 0", minHeight: 44, display: "inline-flex", alignItems: "center", fontWeight: 500 }}>← Back</button>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: C2.stone, textTransform: "uppercase", marginBottom: 4 }}>More Models</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: C2.ink, letterSpacing: "-0.02em" }}>Explore more ways to pray</div>
           </div>
 
@@ -2226,7 +2258,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               </div>
               <div style={{ background: "#4A9E7F15", borderLeft: "3px solid #4A9E7F", borderRadius: "0 8px 8px 0", padding: "10px 14px", marginBottom: 16 }}>
                 <div style={{ fontSize: 12, color: "#4A9E7F", fontWeight: 600, marginBottom: 2 }}>Daniel 6:10</div>
-                <div style={{ fontSize: 12, color: isDark ? "#C8CEDD" : "#2C3347", lineHeight: 1.6, fontStyle: "italic" }}>"He got down on his knees three times a day and prayed and gave thanks before his God."</div>
+                <div style={{ fontSize: 12, color: isDark ? "#C8CEDD" : "#2C3347", lineHeight: 1.6 }}>"He got down on his knees three times a day and prayed and gave thanks before his God."</div>
               </div>
               <button onClick={onOpenDailyOffice}
                 style={{ background: "#4A9E7F", color: "#FFFFFF", border: "none", borderRadius: 10, padding: "13px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%" }}>
@@ -2421,7 +2453,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       // ── Sync body background with theme ──
       React.useEffect(() => {
-        document.body.style.background = isDark ? "#0F1117" : "#EEF1F8";
+        document.body.style.background = isDark ? THEMES.dark.ground : THEMES.light.ground;
         document.body.style.color = isDark ? "#F0F2F8" : "#1A1F2E";
         // Keep the phone's status bar / browser chrome matching the app when the in-app theme differs from the OS.
         document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute("content", isDark ? "#0F1117" : "#EEF1F8"));
@@ -2754,44 +2786,43 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
       // ── Styles ──
       const navBtn = (active) => ({
-        flex: 1, minHeight: 56, padding: "10px 0", fontSize: 12, fontWeight: active ? 700 : 500,
-        letterSpacing: "0.06em", textTransform: "uppercase", background: "none",
+        flex: 1, minHeight: 48, margin: "8px 6px", padding: "8px 0", fontSize: 14, fontWeight: active ? 600 : 400,
+        background: active ? C.bg : "none", borderRadius: 20,
         border: "none", cursor: "pointer",
         color: active ? C.accent : C.stone,
-        borderTop: active ? `3px solid ${C.accent}` : "3px solid transparent",
-        transition: "color 0.15s, border-color 0.15s",
+        transition: "color 0.15s, background 0.15s",
       });
 
       const card = (active) => ({
-        background: C.white, borderRadius: 12, padding: "18px 20px", marginBottom: 10,
+        background: C.white, borderRadius: 22, padding: "18px 20px", marginBottom: 12,
         cursor: "pointer", border: `1px solid ${active ? C.accent : "transparent"}`,
-        transition: "all 0.15s",
+        transition: "all 0.15s", boxShadow: C.shadow,
       });
 
       const btn = (variant = "primary") => ({
         background: variant === "primary" ? C.accentFill : variant === "sage" ? C.sageFill : "transparent",
         color: variant === "ghost" ? C.stone : C.onAccent,
         border: variant === "ghost" ? `1px solid ${C.paper}` : "none",
-        borderRadius: 10, padding: "14px 24px", fontSize: 14, fontWeight: 600,
+        borderRadius: 18, padding: "14px 24px", fontSize: 15, fontWeight: 600,
         cursor: "pointer", width: "100%", marginTop: 16,
       });
 
       const outlineBtn = {
-        background: "none", border: `1px solid ${C.accent}`, borderRadius: 10,
+        background: "none", border: `1px solid ${C.accent}`, borderRadius: 18,
         minHeight: 48, padding: "12px 20px", fontSize: 14, color: C.accent, cursor: "pointer",
         fontWeight: 600, width: "100%", marginBottom: 20,
       };
 
       const inputStyle = {
-        width: "100%", padding: "12px 14px", borderRadius: 10,
-        border: `1px solid ${C.paper}`, background: C.input, fontSize: 14,
+        width: "100%", padding: "13px 16px", borderRadius: 16,
+        border: `1px solid ${C.paper}`, background: C.input, fontSize: 15,
         color: C.inputText, marginBottom: 10, outline: "none", fontFamily: "inherit",
         boxSizing: "border-box",
       };
 
       const fastTypeCard = (sel) => ({
-        background: sel ? C.accentFill : C.white, borderRadius: 10, padding: "14px 16px",
-        cursor: "pointer", border: `1px solid ${sel ? C.accent : C.paper}`, transition: "all 0.15s",
+        background: sel ? C.accentFill : C.white, borderRadius: 20, padding: "16px 16px",
+        cursor: "pointer", border: `1px solid ${sel ? C.accent : "transparent"}`, transition: "all 0.15s",
       });
 
       // ── Learn Tab ──
@@ -2836,16 +2867,13 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
             {/* Model switcher */}
             <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.accentFill, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.accent}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 1</div>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.accentFill, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${C.accent}` }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.onAccent }}>The Lord's Prayer</div>
               </div>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("tabernacle")} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 2</div>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("tabernacle")} style={{ flex: 1, background: C.white, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${C.paper}` }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>The Tabernacle Prayer</div>
               </div>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 3</div>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${C.paper}` }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Praying the Psalms</div>
               </div>
             </div>
@@ -2860,7 +2888,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               </div>
               <div style={{ height: 1, background: C.paper, margin: "14px 0" }} />
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: C.stone, textTransform: "uppercase", marginBottom: 8 }}>Matthew 6:9</div>
-              <div style={{ fontSize: 13, color: C.body, lineHeight: 1.7, fontStyle: "italic" }}>
+              <div style={{ fontSize: 13, color: C.body, lineHeight: 1.7 }}>
                 "Pray then like this: Our Father in heaven, hallowed be your name..."
               </div>
             </div>
@@ -2871,7 +2899,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             <div style={{ fontSize: 12, color: C.stone, marginBottom: 16 }}>{completedCount} of {currentSegs.length} sessions complete</div>
 
             <button onClick={() => setShowPrayer(true)}
-              style={{ background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 12, padding: "16px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 20, letterSpacing: "0.02em" }}>
+              style={{ background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 26, padding: "16px 20px", fontSize: 16, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 20 }}>
               Pray this model
             </button>
 
@@ -2891,9 +2919,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 </div>
               </div>
             ))}
-            <div style={{ marginTop: 24, padding: "18px 20px", background: C.paper, borderRadius: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.stone, textTransform: "uppercase", marginBottom: 8 }}>Matthew 6:9–13</div>
-              <div style={{ fontSize: 13, lineHeight: 1.75, color: C.body, fontStyle: "italic" }}>
+            <div style={{ marginTop: 24, padding: "20px 22px", background: C.card, borderRadius: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.accent, marginBottom: 8 }}>Matthew 6:9–13</div>
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: C.body, fontWeight: 300 }}>
                 "Our Father in heaven, hallowed be your name. Your kingdom come, your will be done, on earth as it is in heaven. Give us this day our daily bread, and forgive us our debts, as we also have forgiven our debtors. And lead us not into temptation, but deliver us from evil. For yours is the kingdom and the power and the glory, forever. Amen."
               </div>
             </div>
@@ -2921,16 +2949,13 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
             {/* Model switcher */}
             <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 1</div>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.white, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${C.paper}` }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>The Lord's Prayer</div>
               </div>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("tabernacle")} style={{ flex: 1, background: tabAccent, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${tabAccent}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 2</div>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("tabernacle")} style={{ flex: 1, background: tabAccent, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${tabAccent}` }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.onAccent }}>The Tabernacle Prayer</div>
               </div>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 10, padding: "12px 14px", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.stone, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 2 }}>Model 3</div>
+              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${C.paper}` }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Praying the Psalms</div>
               </div>
             </div>
@@ -3006,7 +3031,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 <div style={{ width: 10, height: 10, borderRadius: "50%", background: sec.color, flexShrink: 0 }} />
                 <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: C.ink }}>{sec.label}</div>
               </div>
-              <div style={{ fontSize: 13, color: C.stone, marginBottom: 24, fontStyle: "italic" }}>"{sec.prompt}"</div>
+              <div style={{ fontSize: 13, color: C.stone, marginBottom: 24 }}>"{sec.prompt}"</div>
 
               {showAdd ? (
                 <div style={{ background: C.white, borderRadius: 16, padding: 20, marginBottom: 16 }}>
@@ -3066,7 +3091,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                             <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 3 }}>{e.name}</div>
                           )}
                           <div style={{ fontSize: 15, color: C.body, lineHeight: 1.55 }}>{e.text}</div>
-                          {e.sample && <div style={{ fontSize: 12, color: C.stone, marginTop: 4, fontStyle: "italic" }}>Example — tap Edit to make it yours</div>}
+                          {e.sample && <div style={{ fontSize: 12, color: C.stone, marginTop: 4 }}>Example — tap Edit to make it yours</div>}
                           <div style={{ fontSize: 12, color: C.stone, marginTop: 6 }}>Added {e.date}</div>
                         </div>
                       </div>
@@ -3107,7 +3132,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                       <button onClick={() => { if (window.confirm("Delete this entry? This can't be undone.")) deleteEntry(activeSection, e.id); }}
                         aria-label={`Delete: ${e.text.slice(0, 60)}`}
                         style={{ background: "none", border: "none", width: 44, height: 44, marginTop: -10, marginRight: -12, fontSize: 16, color: C.stone, cursor: "pointer", flexShrink: 0 }}>
-                        <span aria-hidden="true">✕</span>
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
                       </button>
                     </div>
                   ))}
@@ -3165,9 +3190,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             {/* The one primary action */}
             <div style={{ marginBottom: 20 }}>
               <button onClick={prayNow}
-                style={{ width: "100%", minHeight: 64, background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 18, padding: "14px 20px", fontSize: 20, fontWeight: 700, letterSpacing: "-0.01em", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
-                <span>Pray now</span>
-                <span style={{ fontSize: 13, fontWeight: 500, opacity: 0.9 }}>
+                style={{ position: "relative", overflow: "hidden", width: "100%", minHeight: 72, background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 26, padding: "14px 20px", fontSize: 21, fontWeight: 600, letterSpacing: "-0.01em", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, boxShadow: "0 10px 26px rgba(107,95,214,0.30)" }}>
+                <span className="wave-edge" aria-hidden="true" />
+                <span style={{ position: "relative" }}>Pray now</span>
+                <span style={{ position: "relative", fontSize: 14, fontWeight: 400 }}>
                   {sampling ? `Pray for ${sessionSize} of your ${needsCount} requests`
                     : needsCount > 0 ? `Pray through your ${needsCount} request${needsCount === 1 ? "" : "s"}`
                     : activeCount > 0 ? "Give thanks and pray through your board"
@@ -3176,11 +3202,11 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               </button>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button onClick={openModel}
-                  style={{ flex: 1, minHeight: 48, background: "none", border: "1px solid " + C.paper, borderRadius: 14, padding: "10px 12px", fontSize: 14, fontWeight: 600, color: C.ink, cursor: "pointer" }}>
-                  Pray {modelName}
+                  style={{ flex: 1, minHeight: 50, background: C.card, border: "none", borderRadius: 20, padding: "10px 12px", fontSize: 14, fontWeight: 400, color: C.accentText, cursor: "pointer", boxShadow: C.shadow }}>
+                  {modelName.charAt(0).toUpperCase() + modelName.slice(1)}
                 </button>
                 <button onClick={() => setShowModelPicker(true)} aria-label="Choose a different prayer model"
-                  style={{ flex: 1, minHeight: 48, background: "none", border: "1px solid " + C.paper, borderRadius: 14, padding: "10px 12px", fontSize: 14, fontWeight: 600, color: C.ink, cursor: "pointer" }}>
+                  style={{ flex: 1, minHeight: 50, background: C.card, border: "none", borderRadius: 20, padding: "10px 12px", fontSize: 14, fontWeight: 400, color: C.accentText, cursor: "pointer", boxShadow: C.shadow }}>
                   Choose a model
                 </button>
               </div>
@@ -3197,92 +3223,52 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               )}
             </div>
 
-            {/* Prayer Life Card */}
-            <div style={{ background: C.dark, borderRadius: 18, padding: "20px", marginBottom: 20, position: "relative", overflow: "hidden" }}>
-              {/* Background decoration */}
-              <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(107,95,214,0.2)" }} />
-              <div style={{ position: "absolute", bottom: -20, left: -20, width: 80, height: 80, borderRadius: "50%", background: "rgba(74,158,127,0.15)" }} />
-
-              {/* Milestone celebration */}
-              {justHitMilestone && (
-                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 20 }}>{justHitMilestone.icon}</span>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>{justHitMilestone.label} milestone!</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)" }}>{justHitMilestone.message}</div>
-                  </div>
-                </div>
-              )}
-
-              {/* Streak + today */}
-              <div style={{ display: "flex", gap: 10, marginBottom: 16, position: "relative", zIndex: 1 }}>
-                <div style={{ flex: 1, background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px", textAlign: "center" }}>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.03em", lineHeight: 1 }}>{streak}</div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 4 }}>Day streak</div>
-                </div>
-                {prayedToday && (
-                <div style={{ flex: 1, background: prayedToday ? "rgba(74,158,127,0.3)" : "rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px", textAlign: "center", border: prayedToday ? "1px solid rgba(74,158,127,0.5)" : "none" }}>
-                  <div style={{ fontSize: 24, marginBottom: 2 }}>{prayedToday ? "✓" : "○"}</div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: prayedToday ? "#5BB891" : "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{prayedToday ? "Prayed today" : "Not yet today"}</div>
-                </div>
-                )}
-              </div>
-
-              {/* Weekly goal */}
-              <div style={{ position: "relative", zIndex: 1, marginBottom: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>This week</div>
-                  <button onClick={() => setShowGoalPicker(!showGoalPicker)}
-                    style={{ background: "none", border: "none", fontSize: 11, color: "rgba(255,255,255,0.4)", cursor: "pointer", padding: 0 }}>
-                    {daysThisWeek}/{weeklyGoal} days · change goal
-                  </button>
-                </div>
-                {/* Progress bar */}
-                <div style={{ height: 6, background: "rgba(255,255,255,0.1)", borderRadius: 3, overflow: "hidden" }}>
-                  <div style={{ height: "100%", background: daysThisWeek >= weeklyGoal ? "#5BB891" : C.accent, borderRadius: 3, width: Math.min(100, (daysThisWeek / weeklyGoal) * 100) + "%", transition: "width 0.5s ease" }} />
-                </div>
-                {/* Day dots */}
-                <div style={{ display: "flex", gap: 4, marginTop: 8, justifyContent: "center" }}>
-                  {Array.from({ length: weeklyGoal }).map((_, i) => (
-                    <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: i < daysThisWeek ? C.accentFill : "rgba(255,255,255,0.15)", transition: "background 0.3s" }} />
-                  ))}
-                </div>
-
-                {/* Goal picker */}
-                {showGoalPicker && (
-                  <div style={{ marginTop: 10, display: "flex", gap: 6, justifyContent: "center" }}>
-                    {[2,3,4,5,6,7].map(n => (
-                      <button key={n} onClick={() => { setWeeklyGoal(n); setShowGoalPicker(false); }}
-                        style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: weeklyGoal === n ? C.accentFill : "rgba(255,255,255,0.1)", color: "#FFFFFF", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                        {n}
+            {/* The week as a pool: the water rises as the week's days are prayed */}
+            {(() => {
+              const level = Math.max(0.1, Math.min(1, daysThisWeek / Math.max(1, weeklyGoal)));
+              return (
+                <div className="pool" style={{ background: C.card, borderRadius: 26, padding: "16px 20px 22px", marginBottom: 20, minHeight: 148, boxShadow: C.shadow }}>
+                  <div className="pool-water back" style={{ height: Math.round(level * 104) + "px", background: C.water2 }} />
+                  <div className="pool-water" style={{ height: Math.round(level * 80) + "px", background: C.water }} />
+                  <div style={{ position: "relative", zIndex: 2 }}>
+                    {justHitMilestone && (
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 10, fontSize: 14, color: C.ink }}>
+                        <span style={{ fontWeight: 600 }}>{justHitMilestone.label}</span>
+                        <span style={{ color: C.body }}>{justHitMilestone.message}</span>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <div style={{ fontSize: 20, fontWeight: 500, color: C.ink, letterSpacing: "-0.01em" }}>{daysThisWeek} of {weeklyGoal} days this week</div>
+                      <button onClick={() => setShowGoalPicker(!showGoalPicker)} aria-label="Change weekly goal"
+                        style={{ background: C.bg, border: "none", borderRadius: 16, minHeight: 36, padding: "6px 12px", fontSize: 13, color: C.accentText, cursor: "pointer", fontWeight: 400, flexShrink: 0 }}>
+                        Goal
                       </button>
-                    ))}
+                    </div>
+                    <div style={{ fontSize: 14, color: C.body, marginTop: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                      {prayedToday && <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: "50%", background: C.sun, boxShadow: "0 0 0 4px rgba(217,160,102,0.28)", display: "inline-block" }} />}
+                      <span>{streak > 0 ? `${streak}-day streak` : "Begin whenever you're ready"}{prayedToday ? " · prayed today" : ""}</span>
+                    </div>
+                    {showGoalPicker && (
+                      <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {[2, 3, 4, 5, 6, 7].map(n => (
+                          <button key={n} onClick={() => { setWeeklyGoal(n); setShowGoalPicker(false); }} aria-label={`Goal: ${n} days a week`}
+                            style={{ width: 44, height: 44, borderRadius: "50%", border: "none", background: weeklyGoal === n ? C.accentFill : C.bg, color: weeklyGoal === n ? C.onAccent : C.ink, fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-
-              {/* Next milestone */}
-              {nextMilestone && (
-                <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 16 }}>{nextMilestone.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Next milestone</div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>{nextMilestone.label} — {nextMilestone.days - streak} day{nextMilestone.days - streak !== 1 ? "s" : ""} away</div>
-                  </div>
-                  {prevMilestone && (
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{prevMilestone.icon} {prevMilestone.label}</div>
-                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Daily verse */}
-            <div style={{ background: C.card, borderRadius: 14, padding: "14px 16px", marginBottom: 20, borderLeft: "3px solid " + C.accent }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: C.accent, textTransform: "uppercase", marginBottom: 6 }}>{todaysVerse.ref}</div>
-              <div style={{ fontSize: 13, color: C.body, lineHeight: 1.65, fontStyle: "italic" }}>"{todaysVerse.text}"</div>
-            </div>
+            <figure style={{ margin: "0 4px 24px", padding: "6px 14px" }}>
+              <blockquote style={{ margin: 0, fontSize: 16, color: C.ink, lineHeight: 1.7, fontWeight: 300 }}>“{todaysVerse.text}”</blockquote>
+              <figcaption style={{ fontSize: 13, color: C.accentText, marginTop: 8 }}>{todaysVerse.ref}</figcaption>
+            </figure>
 
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 12 }}>Your prayer board</div>
             {[
               { title: "Give thanks", ids: ["praise", "worship"] },
               { title: "Ask", ids: ["petition", "intercession"] },
@@ -3291,7 +3277,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             ].map(group => (
               <div key={group.title} style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.stone, margin: "0 4px 8px" }}>{group.title}</div>
-                <div style={{ background: C.white, borderRadius: 16, overflow: "hidden", border: "1px solid " + C.paper }}>
+                <div style={{ background: C.card, borderRadius: 24, overflow: "hidden", paddingTop: 2, paddingBottom: 2, boxShadow: C.shadow }}>
                   {group.ids.map((id, idx) => {
                     const sec = SECTIONS.find(x => x.id === id);
                     const open = (entries[id] || []).filter(e => !e.done);
@@ -3300,7 +3286,9 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                       ? ((id === "intercession" || id === "forgiveness") ? open.map(e => e.name || e.text).slice(0, 3).join(", ") : open[0].text)
                       : sec.hint;
                     return (
-                      <div key={id} style={{ display: "flex", alignItems: "stretch", borderTop: idx ? "1px solid " + C.paper : "none" }}>
+                      <div key={id}>
+                        {idx > 0 && <div className="ripple" aria-hidden="true" />}
+                        <div style={{ display: "flex", alignItems: "center" }}>
                         <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => { setActiveSection(id); setShowAdd(false); }}
                           style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 14, padding: "14px 4px 14px 16px", minHeight: 68, cursor: "pointer" }}>
                           <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: "50%", background: sec.color, flexShrink: 0 }} />
@@ -3314,9 +3302,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                         </div>
                         <button onClick={() => { setActiveSection(id); setNewEntry({ name: "", text: "" }); setShowAdd(true); }}
                           aria-label={`Add to ${sec.label}`} title={`Add to ${sec.label}`}
-                          style={{ width: 60, background: "none", border: "none", borderLeft: "1px solid " + C.paper, color: sec.color, fontSize: 26, fontWeight: 300, cursor: "pointer", flexShrink: 0 }}>
+                          style={{ width: 44, height: 44, margin: "0 14px 0 4px", borderRadius: "50%", background: C.bg, border: "none", color: sec.color, fontSize: 24, fontWeight: 300, cursor: "pointer", flexShrink: 0 }}>
                           <span aria-hidden="true">+</span>
                         </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -3325,13 +3314,13 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             ))}
 
             {/* Backup & data: collapsed so the board stays the focus */}
-            <details style={{ background: C.card, borderRadius: 14, marginTop: 4, border: "1px solid " + C.paper }}>
+            <details style={{ background: C.card, borderRadius: 22, marginTop: 4, boxShadow: C.shadow }}>
               <summary style={{ minHeight: 52, padding: "0 18px", display: "flex", alignItems: "center", cursor: "pointer", fontSize: 14, fontWeight: 600, color: C.ink }}>
                 Backup &amp; your data
               </summary>
               <div style={{ padding: "0 18px 16px" }}>
                 <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 12 }}>
-                  Everything you add here is saved securely to your account, so it's here every time you sign in, on any device. You can erase it or delete your account anytime in Settings (⚙).
+                  Everything you add here is saved securely to your account, so it's here every time you sign in, on any device. You can erase it or delete your account anytime in Settings (the sliders icon, top right).
                 </div>
               <button onClick={() => {
                 // Build a plain text export of all board entries
@@ -3391,11 +3380,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       // ── Fast Tab ──
       const renderFast = () => (
         <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 16 }}>Fasting</div>
 
           {!fastActive ? (
             <>
-              <div style={{ background: C.white, borderRadius: 16, padding: 24, marginBottom: 20 }}>
+              <div style={{ background: C.white, borderRadius: 24, padding: 24, marginBottom: 24 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, letterSpacing: "-0.01em" }}>Why fast?</div>
                 <div style={{ fontSize: 14, lineHeight: 1.75, color: C.body }}>
                   Fasting is hunger redirected. When your body says "eat," you say "pray." That friction is the point — it creates a physical reminder to seek God rather than comfort.<br /><br />
@@ -3403,7 +3391,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 </div>
               </div>
 
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 16 }}>Choose your fast</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: "0 4px 12px" }}>Choose your fast</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
                 {FAST_TYPES.map(ft => (
                   <div role="button" tabIndex={0} onKeyDown={kbClick} key={ft.id} style={fastTypeCard(fastType === ft.id)} onClick={() => setFastType(ft.id)}>
@@ -3413,7 +3401,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 ))}
               </div>
 
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 12 }}>Intention (optional)</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, margin: "0 4px 10px" }}>Intention <span style={{ fontWeight: 400, color: C.stone }}>(optional)</span></div>
               <textarea style={{ ...inputStyle, height: 80, resize: "none", lineHeight: 1.6 }} placeholder="What are you fasting for?" value={fastNotes} onChange={e => setFastNotes(e.target.value)} />
               <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.6, marginBottom: 4 }}>
                 If you have a medical condition, are pregnant, or take medication, talk with your doctor before fasting. You can always end a fast early.
@@ -3441,7 +3429,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
               <div style={{ background: C.white, borderRadius: 16, padding: 24, marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.stone, textTransform: "uppercase", marginBottom: 10 }}>Isaiah 58:6</div>
-                <div style={{ fontSize: 13, lineHeight: 1.75, color: C.body, fontStyle: "italic" }}>
+                <div style={{ fontSize: 13, lineHeight: 1.75, color: C.body }}>
                   "Is not this the fast that I choose: to loose the bonds of wickedness, to undo the straps of the yoke, to let the oppressed go free, and to break every yoke?"
                 </div>
               </div>
@@ -3982,14 +3970,13 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const immersive = showBoardPrayer || showMoreModels || showDailyOffice || showPsalms || showTabPrayer || showPrayer;
 
       return (
-        <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", background: C.bg, minHeight: "var(--vh100)", width: "100%", color: C.ink, paddingBottom: immersive ? 0 : "calc(60px + env(safe-area-inset-bottom, 0px))" }}>
+        <div style={{ fontFamily: "'Lexend', -apple-system, BlinkMacSystemFont, sans-serif", background: "transparent", minHeight: "var(--vh100)", width: "100%", color: C.ink, paddingBottom: immersive ? 0 : "calc(60px + env(safe-area-inset-bottom, 0px))" }}>
           <SyncBanner loadError={loadError} onRetryLoad={() => setReloadKey(k => k + 1)} />
           {/* Header (hidden on full-screen prayer/model screens, which have their own) */}
           {!immersive && (
-          <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 5vw 20px", borderBottom: `1px solid ${C.paper}`, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 5vw 16px", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", color: C.stone, textTransform: "uppercase", marginBottom: 4 }}>Groundwork</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: "-0.02em" }}>
+              <div style={{ fontSize: 26, fontWeight: 600, color: C.ink, letterSpacing: "-0.01em" }}>
                 {showSettings ? "Settings" : headerTitle[tab]}
               </div>
             </div>
@@ -4003,13 +3990,15 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               )}
               <button onClick={() => { setShowSettings(false); setShowHome(true); }}
                 title="How it works" aria-label="How Groundwork works"
-                style={{ background: C.paper, color: C.ink, border: "none", borderRadius: 12, width: 44, height: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 600, flexShrink: 0 }}>
-                <span aria-hidden="true">?</span>
+                style={{ background: C.paper, color: C.ink, border: "none", borderRadius: "50%", width: 44, height: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.8"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>
               </button>
               <button onClick={() => setShowSettings(!showSettings)}
                 aria-label={showSettings ? "Close settings" : "Open settings"} aria-pressed={showSettings}
-                style={{ background: showSettings ? C.accentFill : C.paper, color: showSettings ? "#FFFFFF" : C.ink, border: "none", borderRadius: 12, width: 44, height: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-                <span aria-hidden="true">{showSettings ? "✕" : "⚙"}</span>
+                style={{ background: showSettings ? C.accentFill : C.paper, color: showSettings ? "#FFFFFF" : C.ink, border: "none", borderRadius: "50%", width: 44, height: 44, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {showSettings
+                  ? <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                  : <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>}
               </button>
             </div>
           </div>
@@ -4017,7 +4006,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
           {/* Nav */}
           {!immersive && (
-          <nav className="bottom-nav" aria-label="Main" style={{ display: "flex", borderTop: `1px solid ${C.paper}`, background: C.bg, position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 50, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+          <nav className="bottom-nav" aria-label="Main" style={{ display: "flex", borderRadius: "26px 26px 0 0", boxShadow: "0 -6px 24px rgba(45,42,94,0.10)", background: C.card, position: "fixed", left: 0, right: 0, bottom: 0, maxWidth: 600, margin: "0 auto", zIndex: 50, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
             {[["learn","Learn"],["board","Board"],["fast","Fast"]].map(([id, label]) => (
               <button key={id} aria-current={tab === id && !showHome && !showSettings ? "page" : undefined} style={navBtn(tab === id)} onClick={() => { setTab(id); setShowHome(false); setShowSettings(false); setShowTabPrayer(false); setShowPrayer(false); setShowPsalms(false); setShowModelPicker(false); setShowMoreModels(false); setShowDailyOffice(false); setShowBoardPrayer(false); }}>{label}</button>
             ))}
