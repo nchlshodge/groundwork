@@ -229,6 +229,31 @@
         });
     const isUuid = (v) => typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
+    // ── Pray for a few at a time ───────────────────────────────────────────────
+    // With a long list, a session can cover just 2-10 requests. They're chosen at random but rotate:
+    // the ones prayed for longest ago (or never) come first, so every request gets its turn.
+    const NEED_SECTIONS = ["petition", "intercession", "confession", "forgiveness"];
+    const PRAYED_KEY = "gw_prayed_at";
+    const readPrayedAt = () => { try { return JSON.parse(localStorage.getItem(PRAYED_KEY) || "{}"); } catch (e) { return {}; } };
+    const openNeeds = (entries) => NEED_SECTIONS.reduce((n, k) => n + ((entries && entries[k]) || []).filter(e => !e.done).length, 0);
+    const pickSessionEntries = (entries, size) => {
+      const all = [];
+      NEED_SECTIONS.forEach(k => ((entries[k] || [])).forEach(e => { if (!e.done) all.push({ id: e.id, rank: 0 }); }));
+      if (!size || all.length <= size) return entries;
+      const seen = readPrayedAt();
+      all.forEach(x => { x.rank = (seen[x.id] || 0) + Math.random() * 1000; });   // never-prayed first, ties random
+      all.sort((a, b) => a.rank - b.rank);
+      const chosen = new Set(all.slice(0, size).map(x => x.id));
+      const next = { ...entries };
+      NEED_SECTIONS.forEach(k => { next[k] = (entries[k] || []).filter(e => e.done || chosen.has(e.id)); });
+      return next;
+    };
+    const rememberPrayedFor = (entries) => {
+      const now = Date.now(), seen = readPrayedAt();
+      NEED_SECTIONS.forEach(k => (entries[k] || []).forEach(e => { if (!e.done) seen[e.id] = now; }));
+      try { localStorage.setItem(PRAYED_KEY, JSON.stringify(seen)); } catch (e) {}
+    };
+
     // Lets a clickable <div role="button"> work from the keyboard and screen readers (Enter / Space = tap).
     const kbClick = (ev) => {
       if (ev.target !== ev.currentTarget) return;
@@ -2388,6 +2413,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [loadOk, setLoadOk]             = useState(false);   // true only after a successful load
       const [loadError, setLoadError]       = useState(false);
       const [reloadKey, setReloadKey]       = useState(0);
+      const [sessionSize, setSessionSize]   = useState(null);   // null = pray through everything; 2-10 = pick that many at random
       const [dangerMode, setDangerMode]     = useState(null);    // null | "erase" | "delete"
       const [dangerText, setDangerText]     = useState("");
       const [dangerBusy, setDangerBusy]     = useState(false);
@@ -2400,6 +2426,15 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         // Keep the phone's status bar / browser chrome matching the app when the in-app theme differs from the OS.
         document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute("content", isDark ? "#0F1117" : "#EEF1F8"));
       }, [isDark]);
+
+      // The requests for the prayer in progress: picked when a session starts, then held steady until it ends.
+      const inSession = showPrayer || showTabPrayer || showPsalms || showBoardPrayer;
+      const sessionEntries = React.useMemo(
+        () => (inSession && sessionSize ? pickSessionEntries(entries, sessionSize) : null),
+        [inSession, sessionSize]
+      );
+      React.useEffect(() => { if (sessionEntries) rememberPrayedFor(sessionEntries); }, [sessionEntries]);
+      const prayerEntries = inSession && sessionEntries ? sessionEntries : entries;
 
       // Escape closes the erase/delete confirmation (unless it's mid-request).
       React.useEffect(() => {
@@ -2494,6 +2529,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             if (settingsRow.last_model)  setLastModel(settingsRow.last_model);
             if (settingsRow.dark_mode !== null && settingsRow.dark_mode !== undefined) setDarkMode(settingsRow.dark_mode);
             if (settingsRow.weekly_goal) setWeeklyGoal(settingsRow.weekly_goal);
+            if (settingsRow.session_size) setSessionSize(settingsRow.session_size);
             if (settingsRow.has_seen_onboarding) {
               setHasSeenOnboarding(true);
               setShowHome(false);
@@ -2527,6 +2563,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           weekly_goal: weeklyGoal,
           last_model: lastModel,
           schedule,
+          session_size: sessionSize,
         };
         const flush = () => {
           writeQueue.enqueue({ type: "upsert", table: "groundwork_settings", conflict: "user_id", row, key: "settings" });
@@ -2537,7 +2574,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         return () => {
           clearTimeout(timer);
         };
-      }, [darkMode, hasSeenOnboarding, weeklyGoal, lastModel, schedule, user, dataLoading, loadOk]);
+      }, [darkMode, hasSeenOnboarding, weeklyGoal, lastModel, schedule, sessionSize, user, dataLoading, loadOk]);
 
       // ── Flush any pending settings save immediately when the app is backgrounded or closed ──
       useEffect(() => {
@@ -2974,14 +3011,21 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               {showAdd ? (
                 <div style={{ background: C.white, borderRadius: 16, padding: 20, marginBottom: 16 }}>
                   {activeSection === "intercession" && (
-                    <input style={inputStyle} placeholder="Who are you praying for?" value={newEntry.name} onChange={e => setNewEntry({ ...newEntry, name: e.target.value })} />
+                    <input autoFocus style={inputStyle} placeholder="Who are you praying for?" value={newEntry.name} onChange={e => setNewEntry({ ...newEntry, name: e.target.value })} />
                   )}
-                  <textarea style={{ ...inputStyle, height: 80, resize: "none", lineHeight: 1.6 }} placeholder={sec.hint} value={newEntry.text} onChange={e => setNewEntry({ ...newEntry, text: e.target.value })} />
+                  <textarea autoFocus={activeSection !== "intercession"} style={{ ...inputStyle, height: 96, resize: "none", lineHeight: 1.6 }} placeholder={sec.hint} value={newEntry.text} onChange={e => setNewEntry({ ...newEntry, text: e.target.value })} />
                   <button onClick={() => addEntry(activeSection)} style={btn("primary")}>Add</button>
                   <button onClick={() => setShowAdd(false)} style={{ ...outlineBtn, marginTop: 10, marginBottom: 0 }}>Cancel</button>
                 </div>
               ) : (
                 <button onClick={() => setShowAdd(true)} style={{ ...outlineBtn, borderColor: sec.color, color: sec.color }}>+ Add</button>
+              )}
+
+              {active.length === 0 && done.length === 0 && !showAdd && (
+                <div style={{ textAlign: "center", padding: "28px 12px", color: C.stone, fontSize: 15, lineHeight: 1.65 }}>
+                  <div style={{ color: C.body, marginBottom: 6 }}>{sec.hint}</div>
+                  <div style={{ fontSize: 13 }}>Nothing here yet. Tap Add to begin your list.</div>
+                </div>
               )}
 
               {active.map(e => (
@@ -3105,6 +3149,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
 
         // The one primary action: pray through the board (or, if it's empty, start a model).
         const activeCount = SECTIONS.reduce((n, sec) => n + (entries[sec.id] || []).filter(e => !e.done).length, 0);
+        const needsCount = openNeeds(entries);                       // requests you pray FOR (not praise/worship)
+        const sampling = !!sessionSize && needsCount > sessionSize;  // this session will pick a few at random
         const modelName = lastModel === "The Tabernacle Prayer" ? "the Tabernacle" : lastModel && /Psalm/i.test(lastModel) ? "the Psalms" : "the Lord's Prayer";
         const openModel = () => {
           if (lastModel === "The Tabernacle Prayer") setShowTabPrayer(true);
@@ -3122,7 +3168,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 style={{ width: "100%", minHeight: 64, background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 18, padding: "14px 20px", fontSize: 20, fontWeight: 700, letterSpacing: "-0.01em", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
                 <span>Pray now</span>
                 <span style={{ fontSize: 13, fontWeight: 500, opacity: 0.9 }}>
-                  {activeCount > 0 ? `Pray through your ${activeCount} request${activeCount === 1 ? "" : "s"}` : `Begin with ${modelName}`}
+                  {sampling ? `Pray for ${sessionSize} of your ${needsCount} requests`
+                    : needsCount > 0 ? `Pray through your ${needsCount} request${needsCount === 1 ? "" : "s"}`
+                    : activeCount > 0 ? "Give thanks and pray through your board"
+                    : `Begin with ${modelName}`}
                 </span>
               </button>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
@@ -3135,6 +3184,17 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                   Choose a model
                 </button>
               </div>
+              {needsCount > 2 && (
+                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 14, fontSize: 14, color: C.body }}>
+                  <label htmlFor="session-size">Pray for</label>
+                  <select id="session-size" value={sessionSize || ""} onChange={e => setSessionSize(e.target.value ? Number(e.target.value) : null)}
+                    style={{ ...inputStyle, width: "auto", marginBottom: 0, padding: "8px 12px", minHeight: 44 }}>
+                    <option value="">all</option>
+                    {[2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                  <span>of your {needsCount} requests{sampling ? ", picked at random and rotating each time" : ""}</span>
+                </div>
+              )}
             </div>
 
             {/* Prayer Life Card */}
@@ -3223,36 +3283,56 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
             </div>
 
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 12 }}>Your prayer board</div>
-            {SECTIONS.map(sec => {
-              const count = entries[sec.id].filter(e => !e.done).length;
-              return (
-                <div role="button" tabIndex={0} onKeyDown={kbClick} key={sec.id} onClick={() => { setActiveSection(sec.id); setShowAdd(false); }}
-                  style={{ background: C.white, borderRadius: 14, padding: "18px 20px", marginBottom: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 14, border: "1px solid transparent", transition: "all 0.15s" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: sec.color + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: sec.color }} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 3 }}>{sec.label}</div>
-                    <div style={{ fontSize: 12, color: C.stone, fontStyle: "italic" }}>{sec.prompt}</div>
-                  </div>
-                  {count > 0 && (
-                    <div style={{ background: sec.color + "22", borderRadius: 20, padding: "3px 10px", fontSize: 12, fontWeight: 600, color: sec.color }}>{count}</div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Data safety note + export */}
-            <div style={{ background: C.card, borderRadius: 14, padding: "16px 18px", marginTop: 8, border: "1px solid " + C.paper }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
-                <span style={{ fontSize: 16, flexShrink: 0 }}>🔒</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 3 }}>Your board is saved to your account</div>
-                  <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.6 }}>
-                    Everything you add here is saved securely and tied to your account, so it will be here every time you sign in, on any device. You can erase it or delete your account anytime in Settings (⚙).
-                  </div>
+            {[
+              { title: "Give thanks", ids: ["praise", "worship"] },
+              { title: "Ask", ids: ["petition", "intercession"] },
+              { title: "Make things right", ids: ["confession", "forgiveness"] },
+              { title: "Remember", ids: ["testimonies"] },
+            ].map(group => (
+              <div key={group.title} style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.stone, margin: "0 4px 8px" }}>{group.title}</div>
+                <div style={{ background: C.white, borderRadius: 16, overflow: "hidden", border: "1px solid " + C.paper }}>
+                  {group.ids.map((id, idx) => {
+                    const sec = SECTIONS.find(x => x.id === id);
+                    const open = (entries[id] || []).filter(e => !e.done);
+                    // Show what's actually on the list (names for people), not just a label.
+                    const preview = open.length
+                      ? ((id === "intercession" || id === "forgiveness") ? open.map(e => e.name || e.text).slice(0, 3).join(", ") : open[0].text)
+                      : sec.hint;
+                    return (
+                      <div key={id} style={{ display: "flex", alignItems: "stretch", borderTop: idx ? "1px solid " + C.paper : "none" }}>
+                        <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => { setActiveSection(id); setShowAdd(false); }}
+                          style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 14, padding: "14px 4px 14px 16px", minHeight: 68, cursor: "pointer" }}>
+                          <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: "50%", background: sec.color, flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                              <span style={{ fontSize: 16, fontWeight: 600, color: C.ink }}>{sec.label}</span>
+                              {open.length > 0 && <span style={{ fontSize: 13, color: C.stone }}>{open.length}</span>}
+                            </div>
+                            <div style={{ fontSize: 13, marginTop: 2, color: open.length ? C.body : C.stone, fontStyle: open.length ? "normal" : "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{preview}</div>
+                          </div>
+                        </div>
+                        <button onClick={() => { setActiveSection(id); setNewEntry({ name: "", text: "" }); setShowAdd(true); }}
+                          aria-label={`Add to ${sec.label}`} title={`Add to ${sec.label}`}
+                          style={{ width: 60, background: "none", border: "none", borderLeft: "1px solid " + C.paper, color: sec.color, fontSize: 26, fontWeight: 300, cursor: "pointer", flexShrink: 0 }}>
+                          <span aria-hidden="true">+</span>
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+            ))}
+
+            {/* Backup & data: collapsed so the board stays the focus */}
+            <details style={{ background: C.card, borderRadius: 14, marginTop: 4, border: "1px solid " + C.paper }}>
+              <summary style={{ minHeight: 52, padding: "0 18px", display: "flex", alignItems: "center", cursor: "pointer", fontSize: 14, fontWeight: 600, color: C.ink }}>
+                Backup &amp; your data
+              </summary>
+              <div style={{ padding: "0 18px 16px" }}>
+                <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 12 }}>
+                  Everything you add here is saved securely to your account, so it's here every time you sign in, on any device. You can erase it or delete your account anytime in Settings (⚙).
+                </div>
               <button onClick={() => {
                 // Build a plain text export of all board entries
                 const lines = ["GROUNDWORK — PRAYER BOARD EXPORT", "Generated: " + new Date().toLocaleDateString(), ""];
@@ -3301,7 +3381,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 style={{ background: "none", border: "1px solid " + C.accent, borderRadius: 10, padding: "10px 16px", fontSize: 12, color: C.accent, cursor: "pointer", width: "100%", fontWeight: 500, marginTop: 8 }}>
                 ↺ Restore from account
               </button>
-            </div>
+              </div>
+            </details>
 
           </div>
         );
@@ -3944,17 +4025,17 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           )}
 
           {showHome ? renderHome() : showBoardPrayer ? (
-            <BoardPrayerScreen entries={entries} onClose={(completed) => { if (completed) logPrayer("Prayer Board"); setShowBoardPrayer(false); }} isDark={isDark} />
+            <BoardPrayerScreen entries={prayerEntries} onClose={(completed) => { if (completed) logPrayer("Prayer Board"); setShowBoardPrayer(false); }} isDark={isDark} />
           ) : showSettings ? renderSettings() : showMoreModels ? (
             <MoreModelsScreen onClose={() => setShowMoreModels(false)} onOpenDailyOffice={() => { setShowMoreModels(false); setShowDailyOffice(true); }} isDark={isDark} />
           ) : showDailyOffice ? (
             <DailyOfficeScreen onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowDailyOffice(false); }} isDark={isDark} />
           ) : showPsalms ? (
-            <PsalmsModelScreen entries={entries} onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowPsalms(false); }} isDark={isDark} />
+            <PsalmsModelScreen entries={prayerEntries} onClose={(modelName) => { if (modelName) logPrayer(modelName); setShowPsalms(false); }} isDark={isDark} />
           ) : showTabPrayer ? (
-            <TabernaclePrayerScreen entries={entries} onClose={(completed) => { if (completed) logPrayer("The Tabernacle Prayer"); setShowTabPrayer(false); }} isDark={isDark} />
+            <TabernaclePrayerScreen entries={prayerEntries} onClose={(completed) => { if (completed) logPrayer("The Tabernacle Prayer"); setShowTabPrayer(false); }} isDark={isDark} />
           ) : showPrayer ? (
-            <GuidedPrayerScreen entries={entries} onClose={(completed) => { if (completed) logPrayer("The Lord's Prayer"); setShowPrayer(false); }} isDark={isDark} />
+            <GuidedPrayerScreen entries={prayerEntries} onClose={(completed) => { if (completed) logPrayer("The Lord's Prayer"); setShowPrayer(false); }} isDark={isDark} />
           ) : (
             <>
               {tab === "learn" && renderLearn()}
