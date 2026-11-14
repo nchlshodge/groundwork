@@ -3,7 +3,7 @@
 //   saved copy when offline.
 // - The code libraries from the CDNs are saved the first time and reused after that.
 // - Sign-in/database traffic (Supabase) and the large music files are never touched here.
-const CACHE = "groundwork-v2";
+const CACHE = "groundwork-v3";
 const SHELL = ["./", "index.html", "privacy.html", "manifest.webmanifest", "fonts/Lexend-latin.woff2", "groundwork-icon-180.png", "groundwork-icon-192.png", "groundwork-icon-512.png"];
 const CDNS = ["cdnjs.cloudflare.com", "cdn.jsdelivr.net"];
 

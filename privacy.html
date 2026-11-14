@@ -8,22 +8,23 @@
   <meta name="theme-color" content="#1A1740" />
   <link rel="icon" type="image/png" sizes="180x180" href="groundwork-icon-180.png" />
   <style>
-    :root { --bg:#EEF1F8; --card:#FFFFFF; --ink:#1A1F2E; --body:#2C3347; --stone:#6A7389; --accent:#6B5FD6; --line:#DDE3F0; }
+    @font-face { font-family:'Lexend'; src:url('fonts/Lexend-latin.woff2') format('woff2'); font-weight:300 700; font-display:swap; }
+    :root { --bg:#EEF1F8; --card:#FFFFFF; --ink:#1A1F2E; --body:#2C3347; --stone:#6A7389; --accent:#5B4FC4; --line:#DDE3F0; }
     @media (prefers-color-scheme: dark) {
-      :root { --bg:#0F1117; --card:#1C1F2A; --ink:#F0F2F8; --body:#C8CEDD; --stone:#8A93A8; --accent:#9A8FFF; --line:#2A2D3A; }
+      :root { --bg:#0F1117; --card:#1C1F2A; --ink:#F0F2F8; --body:#C8CEDD; --stone:#8A93A8; --accent:#A79DFF; --line:#2A2D3A; }
     }
     * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--body); font-family:-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; line-height:1.7; font-size:16px; -webkit-text-size-adjust:100%; }
+    body { margin:0; background:var(--bg); color:var(--body); font-family:'Lexend', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height:1.7; font-size:16px; -webkit-text-size-adjust:100%; }
     main { max-width:720px; margin:0 auto; padding:32px 20px 64px; }
     a { color:var(--accent); }
     .back { display:inline-block; margin-bottom:20px; font-size:14px; text-decoration:none; font-weight:600; }
-    h1 { color:var(--ink); font-size:30px; line-height:1.2; margin:0 0 6px; letter-spacing:-0.02em; }
+    h1 { color:var(--ink); font-size:26px; font-weight:600; line-height:1.2; margin:0 0 6px; letter-spacing:-0.02em; }
     .updated { color:var(--stone); font-size:14px; margin:0 0 24px; }
-    h2 { color:var(--ink); font-size:19px; margin:34px 0 8px; letter-spacing:-0.01em; }
+    h2 { color:var(--ink); font-size:21px; font-weight:600; margin:34px 0 8px; letter-spacing:-0.01em; }
     p, li { font-size:15.5px; }
     ul { padding-left:22px; }
     li { margin-bottom:6px; }
-    .summary { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 22px; margin:18px 0 8px; }
+    .summary { background:var(--card); border-radius:22px; padding:18px 22px; margin:18px 0 8px; }
     .summary ul { margin:8px 0 0; }
     table { width:100%; border-collapse:collapse; font-size:14.5px; margin:10px 0; }
     th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
@@ -33,7 +34,7 @@
 </head>
 <body>
 <main>
-  <a class="back" href="./">← Back to Groundwork</a>
+  <a class="back" href="./">Back to Groundwork</a>
   <h1>Privacy Policy</h1>
   <p class="updated">Last updated: November 13, 2026</p>
 
