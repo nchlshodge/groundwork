@@ -2887,154 +2887,116 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           );
         }
 
-        // Model overview — Lords Prayer
-        if (!isTabernacle) return (
+        // ── Model overview (shared by the Lord's Prayer and the Tabernacle) ──
+        const tabAccent = "#B87333";
+        const about = isTabernacle ? {
+          lead: "The Tabernacle Prayer uses the layout of the Old Testament Tabernacle as a map for approaching God. Each furnishing, from the Gate to the Holy of Holies, is a deeper level of closeness with Him.",
+          more: (
+            <>
+              <p style={{ margin: "0 0 14px" }}>It's a journey inward. You begin with thanksgiving at the gate and move deeper until you arrive at the place of pure presence.</p>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 8 }}>Go deeper</div>
+              {[
+                ["https://www.amazon.com/Could-You-Not-Tarry-One/dp/0800791428", "Could You Not Tarry One Hour?", "Larry Lea. The foundational book on this prayer pattern."],
+                ["https://www.amazon.com/Tabernacle-Moses-Kevin-J-Conner/dp/0914936174", "The Tabernacle of Moses", "Kevin J. Conner. A detailed study of the Tabernacle's meaning."],
+              ].map(([href, t, d]) => (
+                <a key={href} href={href} target="_blank" rel="noopener noreferrer"
+                  style={{ display: "block", background: C.bg, borderRadius: 18, padding: "12px 16px", marginBottom: 8, textDecoration: "none" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.accentText }}>{t}</div>
+                  <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{d}</div>
+                </a>
+              ))}
+            </>
+          ),
+        } : {
+          lead: "In Matthew 6, the disciples asked Jesus directly: “Lord, teach us to pray.” This was His answer. Not a formula to recite, but a model for how to approach God, what to bring, and in what order.",
+          more: (
+            <>
+              <p style={{ margin: "0 0 14px" }}>It begins with worship and ends with worship. In between it covers surrender, provision, forgiveness, and spiritual vigilance. Every part of the human relationship with God is held inside it, and every other prayer model builds on it.</p>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.accentText, marginBottom: 6 }}>Matthew 6:9–13</div>
+              <div style={{ fontWeight: 300, lineHeight: 1.8 }}>
+                “Our Father in heaven, hallowed be your name. Your kingdom come, your will be done, on earth as it is in heaven. Give us this day our daily bread, and forgive us our debts, as we also have forgiven our debtors. And lead us not into temptation, but deliver us from evil. For yours is the kingdom and the power and the glory, forever. Amen.”
+              </div>
+            </>
+          ),
+        };
+        const nextSeg = currentSegs.find(x => !x.complete);
+        const models = [
+          { label: "Lord’s Prayer", on: !isTabernacle, fn: () => setActiveModule("lords") },
+          { label: "Tabernacle", on: isTabernacle, fn: () => setActiveModule("tabernacle") },
+          { label: "Psalms", on: false, fn: () => setShowPsalms(true) },
+        ];
+        return (
           <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-            {/* Model switcher */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.accentFill, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${C.accent}` }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.onAccent }}>The Lord's Prayer</div>
-              </div>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("tabernacle")} style={{ flex: 1, background: C.white, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>The Tabernacle Prayer</div>
-              </div>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Praying the Psalms</div>
-              </div>
+            {/* Which model: one quiet segmented pill */}
+            <div style={{ display: "flex", gap: 4, padding: 4, background: C.card, borderRadius: 26, boxShadow: C.shadow, marginBottom: 20 }}>
+              {models.map(m => (
+                <button key={m.label} onClick={m.fn} aria-pressed={m.on}
+                  style={{ flex: 1, minHeight: 44, padding: "8px 6px", border: "none", borderRadius: 22, cursor: "pointer", fontSize: 14, fontWeight: m.on ? 600 : 400,
+                    background: m.on ? accentColor : "transparent", color: m.on ? C.onAccent : C.body, transition: "background 0.15s, color 0.15s" }}>
+                  {m.label}
+                </button>
+              ))}
             </div>
 
-            {/* About this model */}
-            <div style={{ background: C.white, borderRadius: 20, padding: "18px 20px", marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 8 }}>What is the Lord's Prayer?</div>
-              <div style={{ fontSize: 13, lineHeight: 1.75, color: C.body }}>
-                In Matthew 6, the disciples asked Jesus directly: "Lord, teach us to pray." This was His answer. Not a formula to recite, but a model — a framework for how to approach God, what to bring, and in what order.
-                <br /><br />
-                It begins with worship and ends with worship. In between it covers surrender, provision, forgiveness, and spiritual vigilance. Every aspect of the human relationship with God is held inside it. It is the foundation that every other prayer model builds on.
-              </div>
-              <div style={{ height: 1, background: C.paper, margin: "14px 0" }} />
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.stone, marginBottom: 8 }}>Matthew 6:9</div>
-              <div style={{ fontSize: 13, color: C.body, lineHeight: 1.7 }}>
-                "Pray then like this: Our Father in heaven, hallowed be your name..."
-              </div>
+            {/* The idea in a breath, the rest on request */}
+            <div style={{ margin: "0 4px 16px" }}>
+              <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: C.ink, fontWeight: 300 }}>{about.lead}</p>
+              <details style={{ marginTop: 6 }}>
+                <summary style={{ minHeight: 44, display: "flex", alignItems: "center", cursor: "pointer", fontSize: 14, color: C.accentText }}>More about this model</summary>
+                <div style={{ fontSize: 14, lineHeight: 1.75, color: C.body, paddingBottom: 8 }}>{about.more}</div>
+              </details>
             </div>
 
-            <div style={{ height: 3, background: C.paper, borderRadius: 2, marginBottom: 8, overflow: "hidden" }}>
-              <div style={{ height: "100%", background: C.accentFill, borderRadius: 2, width: `${(completedCount / currentSegs.length) * 100}%`, transition: "width 0.4s" }} />
-            </div>
-            <div style={{ fontSize: 13, color: C.stone, marginBottom: 16 }}>{completedCount} of {currentSegs.length} sessions complete</div>
-
-            <button onClick={() => setShowPrayer(true)}
-              style={{ background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 26, padding: "16px 20px", fontSize: 16, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 20 }}>
+            {/* The action */}
+            <button onClick={() => isTabernacle ? setShowTabPrayer(true) : setShowPrayer(true)}
+              style={{ background: accentColor, color: C.onAccent, border: "none", borderRadius: 26, padding: "18px 20px", minHeight: 60, fontSize: 17, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 28, boxShadow: "0 10px 26px rgba(107,95,214,0.22)" }}>
               Pray this model
             </button>
 
-            {currentSegs.map(seg => (
-              <div role="button" tabIndex={0} onKeyDown={kbClick} key={seg.id} style={card(seg.complete)} onClick={() => setSelected(seg.id)}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4, letterSpacing: "-0.01em" }}>"{seg.phrase}"</div>
-                    <div style={{ fontSize: 13, color: C.stone }}>{seg.tag}</div>
+            {/* The lessons, as one journey */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "0 4px 10px" }}>
+              <div style={{ fontSize: 16, fontWeight: 600, color: C.ink }}>Lessons</div>
+              <div style={{ fontSize: 13, color: C.stone }}>{completedCount} of {currentSegs.length} done</div>
+            </div>
+            <div aria-hidden="true" style={{ height: 6, borderRadius: 3, background: C.water2, opacity: 0.55, margin: "0 4px 14px", overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: 3, background: accentColor, width: `${(completedCount / currentSegs.length) * 100}%`, transition: "width 0.4s" }} />
+            </div>
+            <div style={{ background: C.card, borderRadius: 24, boxShadow: C.shadow, padding: "4px 0", overflow: "hidden" }}>
+              {currentSegs.map((seg, i) => {
+                const isNext = nextSeg && nextSeg.id === seg.id;
+                return (
+                  <div key={seg.id}>
+                    {i > 0 && <div className="ripple" aria-hidden="true" />}
+                    <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setSelected(seg.id)}
+                      aria-label={`${seg.phrase}. ${seg.complete ? "Done" : isNext ? "Up next" : seg.duration}`}
+                      style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", minHeight: 68, cursor: "pointer", background: isNext ? accentColor + "14" : "transparent" }}>
+                      <div style={{ width: 34, height: 34, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 600,
+                        background: seg.complete ? accentColor : "transparent", color: seg.complete ? C.onAccent : isNext ? accentColor : C.stone,
+                        border: seg.complete ? "none" : `1.5px solid ${isNext ? accentColor : C.paper}` }}>
+                        {seg.complete ? <Ico name="check" size={17} /> : i + 1}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, letterSpacing: "-0.01em", lineHeight: 1.35 }}>{isTabernacle ? seg.phrase : `“${seg.phrase}”`}</div>
+                        <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>{seg.tag}</div>
+                      </div>
+                      <div style={{ flexShrink: 0, fontSize: 13, color: isNext ? accentColor : C.stone, fontWeight: isNext ? 600 : 400 }}>
+                        {isNext ? "Up next" : seg.complete ? "" : seg.duration}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ flexShrink: 0, marginLeft: 12 }}>
-                    {seg.complete
-                      ? <span style={{ fontSize: 13, fontWeight: 600, color: C.accent}}>Done</span>
-                      : <span style={{ fontSize: 13, color: C.stone }}>{seg.duration}</span>
-                    }
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div style={{ marginTop: 24, padding: "20px 22px", background: C.card, borderRadius: 24 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.accent, marginBottom: 8 }}>Matthew 6:9–13</div>
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: C.body, fontWeight: 300 }}>
-                "Our Father in heaven, hallowed be your name. Your kingdom come, your will be done, on earth as it is in heaven. Give us this day our daily bread, and forgive us our debts, as we also have forgiven our debtors. And lead us not into temptation, but deliver us from evil. For yours is the kingdom and the power and the glory, forever. Amen."
-              </div>
+                );
+              })}
             </div>
 
-            {/* More Models */}
-            <div style={{ marginTop: 28 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.stone, marginBottom: 14 }}>More models</div>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setShowMoreModels(true)}
-                style={{ background: C.card, borderRadius: 20, padding: "18px 20px", cursor: "pointer", border: `1px solid ${C.paper}`, display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 16, background: "#4A9E7F22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>+</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 3 }}>Explore more ways to pray</div>
-                  <div style={{ fontSize: 13, color: C.stone }}>Additional prayer models — unlock new practices as you grow.</div>
-                </div>
-                <div style={{ fontSize: 18, color: C.stone }}>›</div>
+            {/* More models */}
+            <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setShowMoreModels(true)}
+              style={{ background: C.card, borderRadius: 24, boxShadow: C.shadow, padding: "16px 20px", marginTop: 24, cursor: "pointer", display: "flex", alignItems: "center", gap: 14, minHeight: 64 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: C.ink }}>Explore more ways to pray</div>
+                <div style={{ fontSize: 13, color: C.stone, marginTop: 2 }}>The Daily Office and other models</div>
               </div>
+              <Ico name="next" size={18} style={{ color: C.stone }} />
             </div>
-
-          </div>
-        );
-
-        // Model overview — Tabernacle Prayer
-        const tabAccent = "#B87333";
-        return (
-          <div style={{ padding: "5vw", paddingBottom: 80, maxWidth: 600, margin: "0 auto", width: "100%" }}>
-            {/* Model switcher */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("lords")} style={{ flex: 1, background: C.white, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>The Lord's Prayer</div>
-              </div>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setActiveModule("tabernacle")} style={{ flex: 1, background: tabAccent, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${tabAccent}` }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.onAccent }}>The Tabernacle Prayer</div>
-              </div>
-              <div role="button" tabIndex={0} onKeyDown={kbClick} onClick={() => setShowPsalms(true)} style={{ flex: 1, background: C.white, borderRadius: 20, padding: "12px 10px", textAlign: "center", cursor: "pointer", border: `1px solid ${C.paper}` }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Praying the Psalms</div>
-              </div>
-            </div>
-
-            {/* About this model */}
-            <div style={{ background: C.white, borderRadius: 20, padding: "18px 20px", marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 8 }}>What is the Tabernacle Prayer?</div>
-              <div style={{ fontSize: 13, lineHeight: 1.75, color: C.body }}>
-                The Tabernacle Prayer uses the physical layout of the Old Testament Tabernacle as a map for approaching God in prayer. Each furnishing — from the Gate to the Holy of Holies — represents a deeper level of intimacy with God.
-                <br /><br />
-                It's a journey inward. You begin with thanksgiving at the gate and move progressively deeper until you arrive at the place of pure presence.
-              </div>
-              <div style={{ height: 1, background: C.paper, margin: "14px 0" }} />
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.stone, marginBottom: 10 }}>Learn More</div>
-              <a href="https://www.amazon.com/Could-You-Not-Tarry-One/dp/0800791428" target="_blank" rel="noopener noreferrer"
-                style={{ display: "block", background: C.bg, borderRadius: 16, padding: "12px 14px", marginBottom: 8, textDecoration: "none" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: tabAccent, marginBottom: 2 }}>Could You Not Tarry One Hour?</div>
-                <div style={{ fontSize: 13, color: C.stone }}>Larry Lea — the foundational book on this prayer pattern</div>
-              </a>
-              <a href="https://www.amazon.com/Tabernacle-Moses-Kevin-J-Conner/dp/0914936174" target="_blank" rel="noopener noreferrer"
-                style={{ display: "block", background: C.bg, borderRadius: 16, padding: "12px 14px", textDecoration: "none" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: tabAccent, marginBottom: 2 }}>The Tabernacle of Moses</div>
-                <div style={{ fontSize: 13, color: C.stone }}>Kevin J. Conner — detailed theological study of the Tabernacle typology</div>
-              </a>
-            </div>
-
-            <div style={{ height: 3, background: C.paper, borderRadius: 2, marginBottom: 8, overflow: "hidden" }}>
-              <div style={{ height: "100%", background: tabAccent, borderRadius: 2, width: `${(completedCount / currentSegs.length) * 100}%`, transition: "width 0.4s" }} />
-            </div>
-            <div style={{ fontSize: 13, color: C.stone, marginBottom: 24 }}>{completedCount} of {currentSegs.length} sessions complete</div>
-
-            {/* Pray using this model button */}
-            <button onClick={() => setShowTabPrayer(true)}
-              style={{ background: tabAccent, color: C.onAccent, border: "none", borderRadius: 18, padding: "16px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", marginBottom: 20, letterSpacing: "0.02em" }}>
-              Pray using this model
-            </button>
-
-            {currentSegs.map(seg => (
-              <div role="button" tabIndex={0} onKeyDown={kbClick} key={seg.id} onClick={() => setSelected(seg.id)}
-                style={{ background: C.white, borderRadius: 18, padding: "18px 20px", marginBottom: 10, cursor: "pointer", border: `1px solid ${seg.complete ? tabAccent : "transparent"}`, transition: "all 0.15s" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4, letterSpacing: "-0.01em" }}>{seg.phrase}</div>
-                    <div style={{ fontSize: 13, color: C.stone }}>{seg.tag}</div>
-                  </div>
-                  <div style={{ flexShrink: 0, marginLeft: 12 }}>
-                    {seg.complete
-                      ? <span style={{ fontSize: 13, fontWeight: 600, color: tabAccent}}>Done</span>
-                      : <span style={{ fontSize: 13, color: C.stone }}>{seg.duration}</span>
-                    }
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         );
       };
@@ -3990,7 +3952,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         </div>
       );
 
-      const headerTitle = { learn: activeModule === "tabernacle" ? "The Tabernacle Prayer" : "The Lord's Prayer", board: "Prayer Board", fast: "Fasting" };
+      const headerTitle = { learn: "Learn to pray", board: "Prayer Board", fast: "Fasting" };
       // Guided prayers and model screens take over the whole phone — no tab bar there.
       const immersive = showBoardPrayer || showMoreModels || showDailyOffice || showPsalms || showTabPrayer || showPrayer;
 
