@@ -195,7 +195,7 @@
     const writeQueue = (() => {
       let items = [];
       try { items = JSON.parse(localStorage.getItem(WQ_KEY) || "[]"); if (!Array.isArray(items)) items = []; } catch (e) { items = []; }
-      let uid = null, running = false, timer = null, delay = 4000;
+      let uid = null, running = false, timer = null, delay = 4000, frozen = false;
       let status = { state: "idle", pending: items.length, message: "" };
       const listeners = new Set();
       const emit = (patch) => { status = { ...status, ...patch, pending: items.length }; listeners.forEach(l => l(status)); };
@@ -239,8 +239,12 @@
       return {
         setUser(id) { uid = id; if (id) run(); },
         // op.key: a newer op with the same key replaces an older one that hasn't been sent (latest wins).
+        // Used while erasing data / deleting an account, so a late save can't re-create what was just deleted.
+        freeze() { frozen = true; },
+        unfreeze() { frozen = false; },
+        clearMine() { items = items.filter(o => o.uid !== uid); persist(); emit({ state: "idle", message: "" }); },
         enqueue(op) {
-          if (!uid) return;
+          if (!uid || frozen) return;
           op.uid = uid;
           if (op.key) items = items.filter(o => !(o.key === op.key && o.uid === uid && o !== items[0]));
           items.push(op); persist(); emit({}); run();
@@ -2076,6 +2080,8 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
           {error && <div style={{ fontSize: 13, color: "#FF6B6B", textAlign: "center" }}>{error}</div>}
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", lineHeight: 1.6, marginTop: 24 }}>
             Your prayer board is private and only visible to you.
+            <br />
+            <a href="privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.55)", textDecoration: "underline" }}>Privacy Policy</a>
           </div>
         </div>
       );
@@ -2299,6 +2305,10 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
       const [loadOk, setLoadOk]             = useState(false);   // true only after a successful load
       const [loadError, setLoadError]       = useState(false);
       const [reloadKey, setReloadKey]       = useState(0);
+      const [dangerMode, setDangerMode]     = useState(null);    // null | "erase" | "delete"
+      const [dangerText, setDangerText]     = useState("");
+      const [dangerBusy, setDangerBusy]     = useState(false);
+      const [dangerError, setDangerError]   = useState("");
 
       // ── Sync body background with theme ──
       React.useEffect(() => {
@@ -2562,6 +2572,47 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
         setTestimonyNote("");
         writeQueue.enqueue({ type: "upsert", table: "groundwork_entries", conflict: "id",
           row: { id, user_id: user.id, section: "testimonies", text, note: testimonyNote || null, from_section: sectionId, done: false, sample: false } });
+      };
+
+      // ── Privacy & data: erase Groundwork data / delete the whole account ──
+      const closeDanger = () => { setDangerMode(null); setDangerText(""); setDangerError(""); setDangerBusy(false); };
+      const wipeLocalData = () => {
+        try { Object.keys(localStorage).filter(k => k.startsWith("gw_")).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+      };
+
+      // Removes everything Groundwork stores for this person; the sign-in (and other apps) stay.
+      const eraseGroundworkData = async () => {
+        setDangerBusy(true); setDangerError("");
+        writeQueue.freeze(); writeQueue.clearMine(); pendingWriteRef.current = null;
+        const tables = ["groundwork_entries", "groundwork_prayer_log", "groundwork_segment_progress", "groundwork_fast", "groundwork_settings"];
+        const results = await Promise.all(tables.map(t => supabase.from(t).delete().eq("user_id", user.id)));
+        const failed = results.find(r => r.error);
+        if (failed) {
+          writeQueue.unfreeze();
+          setDangerError("Couldn't erase everything (" + failed.error.message + "). Nothing else was changed — please try again.");
+          setDangerBusy(false);
+          return;
+        }
+        wipeLocalData();
+        window.location.reload();
+      };
+
+      // Deletes the shared account. This is the same delete-account function Scripture Scout uses: it
+      // removes the person's data in every app on this login, then the login itself (Groundwork's
+      // tables are removed automatically along with it).
+      const deleteAccountEverywhere = async () => {
+        setDangerBusy(true); setDangerError("");
+        writeQueue.freeze(); writeQueue.clearMine(); pendingWriteRef.current = null;
+        const { error } = await supabase.functions.invoke("delete-account");
+        if (error) {
+          writeQueue.unfreeze();
+          setDangerError("Couldn't delete your account. Please try again, or email nick@rochesterchristian.church and we'll do it for you.");
+          setDangerBusy(false);
+          return;
+        }
+        wipeLocalData();
+        try { await supabase.auth.signOut({ scope: "local" }); } catch (e) {}
+        window.location.reload();
       };
 
       const skipTestimony = () => {
@@ -3079,7 +3130,7 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 3 }}>Your board is saved to your account</div>
                   <div style={{ fontSize: 12, color: C.stone, lineHeight: 1.6 }}>
-                    Everything you add here is saved to Firebase and tied to your Google account. It will be here every time you sign in, on any device.
+                    Everything you add here is saved securely and tied to your account, so it will be here every time you sign in, on any device. You can erase it or delete your account anytime in Settings (⚙).
                   </div>
                 </div>
               </div>
@@ -3520,6 +3571,81 @@ Look back before you look forward. Thanksgiving is the bridge between where you'
               </div>
             </div>
           </div>
+
+          {/* Privacy & data */}
+          <div style={{ background: C.card, borderRadius: 16, padding: "20px", marginTop: 16, border: "1px solid " + C.paper }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.stone, textTransform: "uppercase", marginBottom: 12 }}>Privacy &amp; data</div>
+            <div style={{ fontSize: 13, color: C.stone, lineHeight: 1.6, marginBottom: 14 }}>
+              Signed in as {user.email || "your account"}. Your prayer board is private to you.
+            </div>
+            <a href="privacy.html" target="_blank" rel="noopener noreferrer"
+              style={{ display: "block", textAlign: "center", textDecoration: "none", background: "none", border: "1px solid " + C.paper, borderRadius: 10, padding: "12px 16px", fontSize: 13, color: C.accent, fontWeight: 600, marginBottom: 8 }}>
+              Read the Privacy Policy
+            </a>
+            <button onClick={() => {
+                const n = writeQueue.pending();
+                const msg = n ? `Sign out? ${n} recent change${n === 1 ? "" : "s"} haven't synced yet. They stay on this device and will sync when you sign back in.` : "Sign out of Groundwork?";
+                if (window.confirm(msg)) signOut();
+              }}
+              style={{ width: "100%", background: "none", border: "1px solid " + C.paper, borderRadius: 10, padding: "12px 16px", fontSize: 13, color: C.ink, fontWeight: 600, cursor: "pointer", marginBottom: 8 }}>
+              Sign out
+            </button>
+            <button onClick={() => { setDangerText(""); setDangerError(""); setDangerMode("erase"); }}
+              style={{ width: "100%", background: "none", border: "1px solid #C0392B", borderRadius: 10, padding: "12px 16px", fontSize: 13, color: "#C0392B", fontWeight: 600, cursor: "pointer", marginBottom: 8 }}>
+              Erase my Groundwork data
+            </button>
+            <button onClick={() => { setDangerText(""); setDangerError(""); setDangerMode("delete"); }}
+              style={{ width: "100%", background: "#C0392B", border: "none", borderRadius: 10, padding: "12px 16px", fontSize: 13, color: "#FFFFFF", fontWeight: 700, cursor: "pointer" }}>
+              Delete my account
+            </button>
+          </div>
+
+          {dangerMode && (() => {
+            const isDelete = dangerMode === "delete";
+            const word = isDelete ? "DELETE" : "ERASE";
+            const ready = dangerText.trim().toUpperCase() === word && !dangerBusy;
+            return (
+              <div role="dialog" aria-modal="true" aria-labelledby="danger-title"
+                style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                <div style={{ background: C.card, borderRadius: 16, padding: 22, maxWidth: 420, width: "100%", maxHeight: "90vh", overflowY: "auto", border: "1px solid " + C.paper }}>
+                  <div id="danger-title" style={{ fontSize: 18, fontWeight: 700, color: C.ink, marginBottom: 12 }}>
+                    {isDelete ? "Delete your account?" : "Erase your Groundwork data?"}
+                  </div>
+                  <div style={{ fontSize: 13, lineHeight: 1.65, color: C.body, marginBottom: 14 }}>
+                    {isDelete ? (
+                      <>
+                        <p style={{ marginBottom: 10 }}>This permanently deletes your account and everything in it. It can't be undone.</p>
+                        <p style={{ marginBottom: 10, fontWeight: 700 }}>Your sign-in is shared with Scripture Scout and Rhythm. Deleting it removes your account and data in those apps too, not just Groundwork.</p>
+                        <p>In Groundwork this erases your prayer board, prayer history, lesson progress, fasts, and settings.</p>
+                      </>
+                    ) : (
+                      <>
+                        <p style={{ marginBottom: 10 }}>This permanently erases your prayer board, prayer history, lesson progress, fasts, and settings from Groundwork. It can't be undone.</p>
+                        <p>Your account stays, and so does your data in Scripture Scout and Rhythm. You can start fresh in Groundwork right away.</p>
+                      </>
+                    )}
+                  </div>
+                  <label htmlFor="danger-confirm" style={{ display: "block", fontSize: 12, color: C.stone, marginBottom: 6 }}>
+                    Type <b>{word}</b> to confirm
+                  </label>
+                  <input id="danger-confirm" value={dangerText} onChange={e => setDangerText(e.target.value)} disabled={dangerBusy}
+                    autoCapitalize="characters" autoComplete="off" autoCorrect="off" spellCheck={false}
+                    style={{ ...inputStyle, marginBottom: 10 }} />
+                  {dangerError && <div style={{ fontSize: 12, color: "#C0392B", lineHeight: 1.5, marginBottom: 10 }}>{dangerError}</div>}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={closeDanger} disabled={dangerBusy}
+                      style={{ flex: 1, background: "none", border: "1px solid " + C.paper, borderRadius: 10, padding: "13px 12px", fontSize: 14, color: C.ink, fontWeight: 600, cursor: dangerBusy ? "not-allowed" : "pointer" }}>
+                      Cancel
+                    </button>
+                    <button onClick={isDelete ? deleteAccountEverywhere : eraseGroundworkData} disabled={!ready}
+                      style={{ flex: 1, background: "#C0392B", border: "none", borderRadius: 10, padding: "13px 12px", fontSize: 14, color: "#FFFFFF", fontWeight: 700, cursor: ready ? "pointer" : "not-allowed", opacity: ready ? 1 : 0.4 }}>
+                      {dangerBusy ? "Working…" : (isDelete ? "Delete account" : "Erase data")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           </div>
         );
